@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <!--
-	Does all the packing. That is, creates the files that live in dist/
+	Does all the packing. That is, creates the files that live in dist
 -->
 
 <project name="dist">
-	<target name="plugins" depends="analyzersjar,characternormalizerjar,annotatorsjar,batchjar,sgmlreaderjar,sgmlwriterjar,filteredjar,gpathjar,gscriptjar,listsjar,markupconvertersjar,multilistsjar,parameterizedjar,pipelinesjar,reasonersjar,regexesjar,docviewerjar,docviewertreejar,docviewernavjar,docviewerselectjar,docviewerslidejar,dociofilejar,dociowebjar,editorextensionnavjar,translatorjar,docformatarffjar,docformatencodingjar,docformatgamtajar,docformathtmljar,docformattextjar,docformatxsltjar,docformatpdfjar">
+	<target name="plugins" depends="analyzersjar,characternormalizerjar,annotationpatternsjar,annotatorsjar,batchjar,sgmlreaderjar,sgmlwriterjar,filteredjar,gpathjar,gscriptjar,listsjar,markupconvertersjar,multilistsjar,parameterizedjar,pipelinesjar,reasonersjar,regexesjar,docviewerjar,docviewertreejar,docviewernavjar,docviewerselectjar,docviewerslidejar,dociofilejar,dociowebjar,editorextensionnavjar,translatorjar,docformatarffjar,docformatencodingjar,docformatgamtajar,docformathtmljar,docformattextjar,docformatxsltjar,docformatpdfjar">
 		<!-- proxy target only -->
 	</target>
-	
-	<!-- TODO: add data files -->
 	
 	<target name="analyzersjar">
 		<delete file="${jar.analyzers}" />
@@ -28,10 +26,23 @@
 		<delete file="${jar.analyzers.characternormalizer}" />
 		<jar destfile="${jar.analyzers.characternormalizer}" manifest="${file.home}/MANIFEST.plugins.MF">
 			<fileset dir="${build.home}/classes">
-				<include name="**/goldenGate/plugin/analyzers/^builtin/*.class" />
+				<include name="**/goldenGate/plugin/analyzers/builtin/*.class" />
 			</fileset>
 			<fileset dir="${src.home}">
 				<include name="**/goldenGate/plugin/analyzers/builtin/*.java" />
+			</fileset>
+			<fileset dir="." includes="LICENSE.txt"/>
+		</jar>
+	</target>
+	
+	<target name="annotationpatternsjar">
+		<delete file="${jar.annotationpatterns}" />
+		<jar destfile="${jar.annotationpatterns}" manifest="${file.home}/MANIFEST.plugins.MF">
+			<fileset dir="${build.home}/classes">
+				<include name="**/goldenGate/plugin/annotationPatterns/*.class" />
+			</fileset>
+			<fileset dir="${src.home}">
+				<include name="**/goldenGate/plugin/annotationPatterns/*.java" />
 			</fileset>
 			<fileset dir="." includes="LICENSE.txt"/>
 		</jar>
@@ -430,7 +441,5 @@
 			</fileset>
 			<fileset dir="." includes="LICENSE.txt"/>
 		</jar>
-		<!-- TODO: create Bin folder in dist -->
-		<!-- TODO: add/copy required JARS -->
 	</target>
 </project>
