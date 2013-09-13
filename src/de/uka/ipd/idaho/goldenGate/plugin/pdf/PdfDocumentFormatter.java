@@ -27,6 +27,7 @@
  */
 package de.uka.ipd.idaho.goldenGate.plugin.pdf;
 
+import java.awt.GraphicsEnvironment;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -101,81 +102,8 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.AbstractGoldenGatePlugin#init()
 	 */
 	public void init() {
-//		
-//		//	register image provider
-//		Imaging.addImageProvider(new ImageProvider() {
-//			public BufferedImage getImage(String name) {
-//				if (!dataProvider.isDataAvailable("cache/" + name))
-//					return null;
-//				try {
-//					InputStream pin = dataProvider.getInputStream("cache/" + name);
-////					PageImage pi = PageImage.read(pin);
-//					PageImage pi = new PageImage(new PageImageInputStream(pin, null));
-//					pin.close();
-//					return pi.image;
-//				}
-//				catch (IOException ioe) {
-//					ioe.printStackTrace(System.out);
-//					return null;
-//				}
-//			}
-//			public BufferedImage getImage(String docId, int pageId) {
-//				return this.getImage(getPageImageName(docId, pageId));
-//			}
-//		});
 		
 		//	register page image source
-//		PageImageStore pis = new PageImageStore() {
-//			public boolean isPageImageAvailable(String docId, int pageId) {
-//				return dataProvider.isDataAvailable("cache/" + getPageImageName(docId, pageId));
-//			}
-//			public String getPageImageName(String docId, int pageId) {
-//				return PdfDocumentFormatter.this.getPageImageName(docId, pageId);
-//			}
-//			public PageImage getPageImage(String docId, int pageId) throws IOException {
-//				String name = getPageImageName(docId, pageId);
-//				if (!dataProvider.isDataAvailable("cache/" + name))
-//					return null;
-//				InputStream pin = dataProvider.getInputStream("cache/" + name);
-////				PageImage pi = PageImage.read(pin);
-//				PageImage pi = new PageImage(new PageImageInputStream(pin, this));
-//				pin.close();
-//				return pi;
-//			}
-//			public PageImageInputStream getPageImageAsStream(String docId, int pageId) throws IOException {
-//				String name = getPageImageName(docId, pageId);
-//				if (!dataProvider.isDataAvailable("cache/" + name))
-//					return null;
-//				return new PageImageInputStream(dataProvider.getInputStream("cache/" + name), this);
-//			}
-//			public String storePageImage(String docId, int pageId, BufferedImage image, int dpi) throws IOException {
-//				String imageName = getPageImageName(docId, pageId);
-//				PageImage pi = new PageImage(image, dpi, this);
-//				try {
-//					OutputStream imageOut = dataProvider.getOutputStream("cache/" + imageName);
-//					pi.write(imageOut);
-//					imageOut.close();
-//					return imageName;
-//				}
-//				catch (IOException ioe) {
-//					ioe.printStackTrace(System.out);
-//					return null;
-//				}
-//			}
-//			public String storePageImage(String docId, int pageId, PageImage pageImage) throws IOException {
-//				String imageName = getPageImageName(docId, pageId);
-//				try {
-//					OutputStream imageOut = dataProvider.getOutputStream("cache/" + imageName);
-//					pageImage.write(imageOut);
-//					imageOut.close();
-//					return imageName;
-//				}
-//				catch (IOException ioe) {
-//					ioe.printStackTrace(System.out);
-//					return null;
-//				}
-//			}
-//		};
 		PageImageStore pis = new AbstractPageImageStore() {
 			public boolean isPageImageAvailable(String name) {
 				if (!name.endsWith(IMAGE_FORMAT))
@@ -207,7 +135,7 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 		//	this is a breach of the data provider principle,
 		//	but that's impossible to avoid if we want to use ImageMagick
 		File pdfPath = new File(this.dataProvider.getAbsolutePath());
-		this.pdfExtractor = new PdfExtractor(pdfPath, pis);
+		this.pdfExtractor = new PdfExtractor(pdfPath, pis, !GraphicsEnvironment.isHeadless()); // use all available cores only in a desktop application
 	}
 	
 	/* (non-Javadoc)
