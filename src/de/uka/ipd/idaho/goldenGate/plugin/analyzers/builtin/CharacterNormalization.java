@@ -70,7 +70,7 @@ public class CharacterNormalization {
 	StringVector unAnnotatedMappings = new StringVector();
 	StringVector unmappedCharacters = new StringVector();
 	
-//	private static int maxMappingLength = 0; // TODO consider mapping multiple characters at once
+//	private int maxMappingLength = 0; // TODO consider mapping multiple characters at once
 	private Properties mappings = new Properties();
 	private boolean mappingsDirty = false;
 	
