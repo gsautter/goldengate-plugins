@@ -19,7 +19,7 @@
 	<target name="compile" description="Compile GoldenGATE Plugin Java sources">
 		
 	    <!-- Compile Java classes as necessary -->
-	    <javac destdir="${build.home}/classes" includeantruntime="false" >
+	    <javac destdir="${build.home}/classes" includeantruntime="false" target="1.5" >
 	    	<src path="${src.home}" />
     		<include name="**/goldenGate/plugin/**/*.java" />
 	        <classpath refid="compile.classpath" />
