@@ -62,6 +62,7 @@ import javax.swing.event.DocumentListener;
 
 import de.uka.ipd.idaho.easyIO.settings.Settings;
 import de.uka.ipd.idaho.gamta.Annotation;
+import de.uka.ipd.idaho.gamta.Gamta;
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
 import de.uka.ipd.idaho.gamta.QueriableAnnotation;
 import de.uka.ipd.idaho.gamta.util.AnnotationPatternMatcher;
@@ -717,9 +718,11 @@ public class AnnotationPatternManager extends AbstractAnnotationSourceManager {
 		
 		boolean validateAnnotationPattern(String annotationPattern) {
 			try {
-				VALIDATOR.matches(AnnotationPatternMatcher.normalizePattern(annotationPattern));
+				annotationPattern = AnnotationPatternMatcher.normalizePattern(annotationPattern);
+				AnnotationPatternMatcher.getMatches(Gamta.newDocument(Gamta.INNER_PUNCTUATION_TOKENIZER), annotationPattern);
 				return true;
-			} catch (PatternSyntaxException pse) {
+			}
+			catch (PatternSyntaxException pse) {
 				return false;
 			}
 		}
