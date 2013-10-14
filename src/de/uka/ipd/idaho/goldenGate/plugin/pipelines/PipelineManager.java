@@ -41,6 +41,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Vector;
@@ -67,6 +68,7 @@ import de.uka.ipd.idaho.goldenGate.GoldenGATE;
 import de.uka.ipd.idaho.goldenGate.plugins.AbstractDocumentProcessorManager;
 import de.uka.ipd.idaho.goldenGate.plugins.DocumentProcessor;
 import de.uka.ipd.idaho.goldenGate.plugins.DocumentProcessorManager;
+import de.uka.ipd.idaho.goldenGate.plugins.MonitorableDocumentProcessor;
 import de.uka.ipd.idaho.goldenGate.plugins.Resource;
 import de.uka.ipd.idaho.goldenGate.plugins.ResourceManager;
 import de.uka.ipd.idaho.goldenGate.plugins.ResourceSplashScreen;
@@ -235,16 +237,8 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 		private String name;
 		private Pipeline pipeline;
 		
-//		private DocumentEditor parentEditor;
 		private ResourceSplashScreen splashScreen;
 		
-//		PipelineDocumentProcessor(DocumentEditor parentEditor, ResourceSplashScreen splashScreen, String name, Pipeline pipeline) {
-//			this.parentEditor = parentEditor;
-//			this.splashScreen = splashScreen;
-//			this.name = name;
-//			this.pipeline = pipeline;
-//		}
-//		
 		PipelineDocumentProcessor(ResourceSplashScreen splashScreen, String name, Pipeline pipeline) {
 			this.splashScreen = splashScreen;
 			this.name = name;
@@ -285,23 +279,28 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentProcessor#process(de.uka.ipd.idaho.gamta.MutableAnnotation, boolean)
 		 */
 		public void process(MutableAnnotation data, Properties parameters) {
-			this.process(data, (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.allowFeedback()), (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.editAfterStep()), (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.editResult()), this.splashScreen, new StringVector(), parameters);
+			this.process(data, (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.allowFeedback()), (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.editAfterStep()), (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.editResult()), this.splashScreen, new HashSet(), parameters, true);
 		}
 		
-		private void process(MutableAnnotation data, boolean allowFeedback, boolean editAfterStep, boolean editResult, ResourceSplashScreen splashScreen, StringVector activePipelines, Properties parameters) {
+		private void process(MutableAnnotation data, boolean allowFeedback, boolean editAfterStep, boolean editResult, ResourceSplashScreen splashScreen, HashSet activePipelines, Properties parameters, boolean isTopInvocation) {
 			DocumentProcessor[] parts = this.pipeline.getParts();
-			activePipelines.addElementIgnoreDuplicates(this.getName().toLowerCase());
+			activePipelines.add(this.getName().toLowerCase());
 			
 			for (int p = 0; p < parts.length; p++) {
 				DocumentProcessor part = parts[p];
-				if (splashScreen != null) splashScreen.setText("Current Processor is " + part.getName());
-				if (part instanceof PipelineDocumentProcessor) {
-					
-					//	catch cycles
-					if (!activePipelines.containsIgnoreCase(part.getName().toLowerCase())) {
-						PipelineDocumentProcessor subPipeline = ((PipelineDocumentProcessor) part);
-						subPipeline.process(data, allowFeedback, false, false, splashScreen, activePipelines, parameters);
+				if (splashScreen != null) {
+					splashScreen.setText("Current Processor is " + part.getName());
+					if (isTopInvocation) {
+						splashScreen.setBaseProgress((100 * p) / parts.length);
+						splashScreen.setMaxProgress((100 * (p+1)) / parts.length);
+						splashScreen.setProgress(0);
 					}
+					else splashScreen.setProgress((100 * p) / parts.length);
+				}
+				
+				if (part instanceof PipelineDocumentProcessor) {
+					if (!activePipelines.contains(part.getName().toLowerCase())) //	catch cycles
+						((PipelineDocumentProcessor) part).process(data, allowFeedback, false, false, splashScreen, activePipelines, parameters, false);
 				}
 				else {
 					Properties subParameters = new Properties();
@@ -311,20 +310,25 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 						if ((allowFeedback && this.pipeline.allowFeedback()) || !INTERACTIVE_PARAMETER.equals(key))
 							subParameters.setProperty(key, parameters.getProperty(key));
 					}
-					
-					part.process(data, subParameters);
+					if (part instanceof MonitorableDocumentProcessor)
+						((MonitorableDocumentProcessor) part).process(data, subParameters, splashScreen);
+					else part.process(data, subParameters);
 				}
 				
 				if ((editAfterStep && this.pipeline.editAfterStep()) || (editResult && ((p + 1) == parts.length) && this.pipeline.editResult())) {
 					DocumentEditDialog ded;
-//					if (splashScreen == null) ded = new DocumentEditDialog(this.parentEditor, "Edit Document", data, ((p + 1) == parts.length));
-//					else ded = new DocumentEditDialog(splashScreen.getDialog(), parent, this.parentEditor, "Edit Document", data, ((p + 1) == parts.length));
-					if (splashScreen == null) ded = new DocumentEditDialog("Edit Document", data, ((p + 1) == parts.length));
+					if (splashScreen == null)
+						ded = new DocumentEditDialog("Edit Document", data, ((p + 1) == parts.length));
 					else ded = new DocumentEditDialog(splashScreen.getDialog(), parent, "Edit Document", data, ((p + 1) == parts.length));
 					ded.setVisible(true);
-					if (ded.stopPipeline) return;
+					if (ded.stopPipeline)
+						return;
 				}
+				
+				if (splashScreen != null)
+					splashScreen.setProgress((100 * (p+1)) / parts.length);
 			}
+			
 			activePipelines.remove(this.getName().toLowerCase());
 		}
 		
@@ -332,17 +336,6 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 			
 			private boolean stopPipeline = false;
 			
-//			DocumentEditDialog(DocumentEditor parent, String title, MutableAnnotation docPart, boolean isFinalDialog) {
-//				super(PipelineManager.this.parent, parent, title, docPart);
-//				this.init(isFinalDialog);
-//			}
-//			
-//			DocumentEditDialog(JDialog splashScreen, GoldenGATE host, DocumentEditor parent, String title, MutableAnnotation docPart, boolean isFinalDialog) {
-//				super(splashScreen, host, parent, title, docPart);
-//				this.host = host;
-//				this.init(isFinalDialog);
-//			}
-//			
 			DocumentEditDialog(String title, MutableAnnotation docPart, boolean isFinalDialog) {
 				super(PipelineManager.this.parent, title, docPart);
 				this.init(isFinalDialog);
