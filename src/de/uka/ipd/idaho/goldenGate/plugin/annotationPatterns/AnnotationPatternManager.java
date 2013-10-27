@@ -39,7 +39,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Properties;
 import java.util.regex.PatternSyntaxException;
@@ -48,6 +50,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -62,10 +65,12 @@ import javax.swing.event.DocumentListener;
 
 import de.uka.ipd.idaho.easyIO.settings.Settings;
 import de.uka.ipd.idaho.gamta.Annotation;
+import de.uka.ipd.idaho.gamta.AnnotationUtils;
 import de.uka.ipd.idaho.gamta.Gamta;
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
 import de.uka.ipd.idaho.gamta.QueriableAnnotation;
 import de.uka.ipd.idaho.gamta.util.AnnotationPatternMatcher;
+import de.uka.ipd.idaho.gamta.util.AnnotationPatternMatcher.MatchTree;
 import de.uka.ipd.idaho.gamta.util.swing.AnnotationDisplayDialog;
 import de.uka.ipd.idaho.goldenGate.plugins.AbstractAnnotationSourceManager;
 import de.uka.ipd.idaho.goldenGate.plugins.AnnotationSource;
@@ -97,10 +102,14 @@ public class AnnotationPatternManager extends AbstractAnnotationSourceManager {
 	 * @param pattern the annotation pattern to test
 	 * @return the Annotations extracted from the currently selected Document by the specified annotation pattern
 	 */
-	private Annotation[] testAnnotationPattern(String pattern) {
+	private MatchTree[] testAnnotationPattern(String pattern) {
 		QueriableAnnotation data = this.parent.getActiveDocument();
-		return ((data == null) ? null : AnnotationPatternMatcher.getMatches(data, pattern));
+		return ((data == null) ? null : AnnotationPatternMatcher.getMatchTrees(data, pattern));
 	}
+//	private Annotation[] testAnnotationPattern(String pattern) {
+//		QueriableAnnotation data = this.parent.getActiveDocument();
+//		return ((data == null) ? null : AnnotationPatternMatcher.getMatches(data, pattern));
+//	}
 	
 	/* 
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.AnnotationSourceManager#createAnnotationSource()
@@ -562,7 +571,6 @@ public class AnnotationPatternManager extends AbstractAnnotationSourceManager {
 	
 	private class AnnotationPatternEditorPanel extends JPanel implements FontEditable, DocumentListener {
 		
-		private static final String VALIDATOR = "";
 		private static final int MAX_SCROLLBAR_WAIT = 200;
 		
 		private JTextArea editor;
@@ -707,12 +715,42 @@ public class AnnotationPatternManager extends AbstractAnnotationSourceManager {
 			if (!this.validateAnnotationPattern(annotationPattern))
 				JOptionPane.showMessageDialog(this, "The " + (selected ? "selected pattern part" : "pattern") + " is not a valid pattern.", "AnnotationPattern Validation", JOptionPane.ERROR_MESSAGE);
 			else {
-				Annotation[] annotations = AnnotationPatternManager.this.testAnnotationPattern(annotationPattern);
-				if (annotations != null) {
-					AnnotationDisplayDialog add = new AnnotationDisplayDialog(this.frame.getDialog(), "Matches of AnnotationPattern", annotations, true);
-					add.setLocationRelativeTo(this);
-					add.setVisible(true);
-				}
+				final MatchTree[] matches = AnnotationPatternManager.this.testAnnotationPattern(annotationPattern);
+				if (matches == null)
+					return;
+				final Annotation[] annotations = new Annotation[matches.length];
+				for (int m = 0; m < matches.length; m++)
+					annotations[m] = matches[m].getMatch();
+				AnnotationDisplayDialog add = new AnnotationDisplayDialog(this.frame.getDialog(), "Matches of Annotation Pattern (double-click for details)", annotations, true) {
+					protected void annotationClicked(int rowIndex, int clickCount) {
+						if (clickCount < 2)
+							super.annotationClicked(rowIndex, clickCount);
+						else try {
+							StringBuffer matchDetails = new StringBuffer("<HTML>");
+							BufferedReader matchDetailReader = new BufferedReader(new StringReader(matches[rowIndex].toString()));
+							for (String line; (line = matchDetailReader.readLine()) != null;) {
+								if (line.trim().length() == 0)
+									continue;
+								if (matchDetails.length() > "<HTML>".length())
+									matchDetails.append("<BR>");
+								int lineStart = 0;
+								while ((lineStart < line.length()) && (line.charAt(lineStart) < 33)) {
+									matchDetails.append("&nbsp;");
+									lineStart++;
+								}
+								matchDetails.append(AnnotationUtils.escapeForXml(line.substring(lineStart)));
+							}
+							matchDetails.append("</HTML>");
+							JLabel matchDetailDisplay = new JLabel(matchDetails.toString(), JLabel.LEFT);
+							JScrollPane matchDetailBox = new JScrollPane(matchDetailDisplay);
+							Dimension matchDetailDisplaySize = matchDetailDisplay.getPreferredSize();
+							matchDetailBox.setPreferredSize(new Dimension(Math.min(500, (matchDetailDisplaySize.width + 10)), Math.min(500, (matchDetailDisplaySize.height + 50))));
+							JOptionPane.showMessageDialog(frame.getDialog(), matchDetailBox, "Match Details", JOptionPane.PLAIN_MESSAGE);
+						} catch (IOException ioe) { /* never gonna happen, but Java don't know */ }
+					}
+				};
+				add.setLocationRelativeTo(this);
+				add.setVisible(true);
 			}
 		}
 		
