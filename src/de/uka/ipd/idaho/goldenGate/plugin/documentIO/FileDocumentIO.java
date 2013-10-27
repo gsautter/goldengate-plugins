@@ -38,11 +38,17 @@ import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.ArrayList;
 
 import javax.swing.BorderFactory;
@@ -57,6 +63,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.plaf.basic.BasicFileChooserUI;
 
+import de.uka.ipd.idaho.easyIO.settings.Settings;
 import de.uka.ipd.idaho.gamta.QueriableAnnotation;
 import de.uka.ipd.idaho.goldenGate.DocumentEditor;
 import de.uka.ipd.idaho.goldenGate.plugins.AbstractDocumentIO;
@@ -67,7 +74,7 @@ import de.uka.ipd.idaho.goldenGate.util.DialogPanel;
 import de.uka.ipd.idaho.stringUtils.accessories.StringSelector;
 
 /**
- * Document IO implementation enabeling the GoldenGATE Editor to read and write
+ * Document IO implementation enabling the GoldenGATE Editor to read and write
  * documents from and to files.
  * 
  * @author sautter
@@ -83,6 +90,50 @@ public class FileDocumentIO extends AbstractDocumentIO {
 		this.fileChooser = new JFileChooser();
 		this.fileChooser.setAcceptAllFileFilterUsed(true);
 		this.fileChooser.addPropertyChangeListener(this.fileKeeper);
+	}
+	
+	/* (non-Javadoc)
+	 * @see de.uka.ipd.idaho.goldenGate.plugins.AbstractGoldenGatePlugin#init()
+	 */
+	public void init() {
+		super.init();
+		try {
+			Reader setIn = new BufferedReader(new InputStreamReader(this.dataProvider.getInputStream("FileDocIO.cnfg")));
+			Settings set = Settings.loadSettings(setIn);
+			String lastLoadFile = set.getSetting("lastLoadedFrom");
+			if (lastLoadFile != null)
+				this.lastLoadFile = new File(lastLoadFile);
+			String lastSaveFile = set.getSetting("lastSavedTo");
+			if (lastSaveFile != null)
+				this.lastSaveFile = new File(lastSaveFile);
+			setIn.close();
+		}
+		catch (IOException ioe) {
+			System.out.println("FileDocIO: exception loading settings - " + ioe.getMessage());
+			ioe.printStackTrace(System.out);
+		}
+	}
+	
+	/* (non-Javadoc)
+	 * @see de.uka.ipd.idaho.goldenGate.plugins.AbstractGoldenGatePlugin#exit()
+	 */
+	public void exit() {
+		super.exit();
+		if (this.dataProvider.isDataEditable("FileDocIO.cnfg")) try {
+			Writer setOut = new BufferedWriter(new OutputStreamWriter(this.dataProvider.getOutputStream("FileDocIO.cnfg")));
+			Settings set = new Settings();
+			if (this.lastLoadFile != null)
+				set.setSetting("lastLoadedFrom", this.lastLoadFile.getAbsolutePath());
+			if (this.lastSaveFile != null)
+				set.setSetting("lastSavedTo", this.lastSaveFile.getAbsolutePath());
+			set.storeAsText(setOut);
+			setOut.flush();
+			setOut.close();
+		}
+		catch (IOException ioe) {
+			System.out.println("FileDocIO: exception saving settings - " + ioe.getMessage());
+			ioe.printStackTrace(System.out);
+		}
 	}
 	
 	/* (non-Javadoc)
@@ -103,31 +154,29 @@ public class FileDocumentIO extends AbstractDocumentIO {
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentSaver#getSaveDocumentMenuItem()
 	 */
 	public JMenuItem getSaveDocumentMenuItem() {
-		JMenuItem mi = new JMenuItem("Save Document to File");
-		return mi;
+		return new JMenuItem("Save Document to File");
 	}
 	
 	/*
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentSaver#getSaveDocumentPartsMenuItem()
 	 */
 	public JMenuItem getSaveDocumentPartsMenuItem() {
-		JMenuItem mi = new JMenuItem("Save Document Parts to File");
-		return mi;
+		return new JMenuItem("Save Document Parts to File");
 	}
 	
 	/*
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentLoader#getLoadDocumentMenuItem()
 	 */
 	public JMenuItem getLoadDocumentMenuItem() {
-		JMenuItem mi = new JMenuItem("Load Document from File");
-		return mi;
+		return new JMenuItem("Load Document from File");
 	}
 	
 	/* (non-Javadoc)
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentLoader#loadDocument()
 	 */
 	public DocumentData loadDocument() throws Exception {
-		if (this.lastLoadFile != null) this.fileChooser.setSelectedFile(this.lastLoadFile);
+		if (this.lastLoadFile != null)
+			this.fileChooser.setSelectedFile(this.lastLoadFile);
 		
 		FileFilter chosenFileFilter = this.fileChooser.getFileFilter();
 		FileFilter[] fileFilters = this.fileChooser.getChoosableFileFilters();
@@ -152,7 +201,8 @@ public class FileDocumentIO extends AbstractDocumentIO {
 			}
 		}
 		
-		if (chosenFormat != null) this.fileChooser.setFileFilter(chosenFormat);
+		if (chosenFormat != null)
+			this.fileChooser.setFileFilter(chosenFormat);
 		else this.fileChooser.setFileFilter(this.fileChooser.getAcceptAllFileFilter());
 		
 		this.fileKeeper.setFile(this.lastLoadFile);
@@ -165,14 +215,17 @@ public class FileDocumentIO extends AbstractDocumentIO {
 				ArrayList formatList = new ArrayList();
 				for (int d = 0; d < formatters.length; d++) {
 					DocumentFormat[] formats = formatters[d].getLoadFileFilters();
-					for (int f = 0; f < formats.length; f++) formatList.add(formats[f]);
+					for (int f = 0; f < formats.length; f++)
+						formatList.add(formats[f]);
 				}
 				SelectFormatDialog sfd = new SelectFormatDialog(true, true, "Load", ("'" + this.fileChooser.getAcceptAllFileFilter().getDescription() + "' is not a valid file format, please select a format."), ((DocumentFormat[]) formatList.toArray(new DocumentFormat[formatList.size()])));
 				sfd.setVisible(true);
-				if (sfd.isCommitted) selectedFilter = sfd.getFormat();
+				if (sfd.isCommitted)
+					selectedFilter = sfd.getFormat();
 				else file = null;
 			}
 			if ((file != null) && file.isFile()) {
+				this.lastLoadFile = file;
 				FileInputStream fis = null;
 				try {
 					System.out.println("FileDocumentIO: opening file as '" + ((DocumentFormat) selectedFilter).getDefaultSaveFileExtension() + "' (" + selectedFilter.getDescription() + ") via " + selectedFilter.getClass().getName());
@@ -311,8 +364,7 @@ public class FileDocumentIO extends AbstractDocumentIO {
 			target = new File(((this.lastSaveFile == null) ? new File("") : this.lastSaveFile.getParentFile()), "document.xml"); 
 		else if (model instanceof FileSaveOperation)
 			target = new File(((FileSaveOperation) model).file.getParentFile(), model.getDocumentName()); 
-		else
-			target = new File(((this.lastSaveFile == null) ? new File("") : this.lastSaveFile.getParentFile()), model.getDocumentName()); 
+		else target = new File(((this.lastSaveFile == null) ? new File("") : this.lastSaveFile.getParentFile()), model.getDocumentName()); 
 		
 		//	make sure target file has appropriate extension for pre-selected format
 		if (selectedFormat != null) {
@@ -419,6 +471,7 @@ public class FileDocumentIO extends AbstractDocumentIO {
 		//	show dialog
 		if (this.fileChooser.showSaveDialog(DialogPanel.getTopWindow()) == JFileChooser.APPROVE_OPTION) {
 			target = this.fileChooser.getSelectedFile();
+			this.lastSaveFile = target;
 			
 			FileFilter selectedFilter = this.fileChooser.getFileFilter();
 			if ((target != null) && !(selectedFilter instanceof DocumentFormat)) {
@@ -497,6 +550,7 @@ public class FileDocumentIO extends AbstractDocumentIO {
 		if (this.fileChooser.showSaveDialog(DialogPanel.getTopWindow()) == JFileChooser.APPROVE_OPTION) {
 			this.fileChooser.setAccessory(null);
 			target = this.fileChooser.getSelectedFile();
+			this.lastSaveFile = target;
 			
 			FileFilter selectedFilter = this.fileChooser.getFileFilter();
 			if ((target != null) && !(selectedFilter instanceof DocumentFormat)) {
