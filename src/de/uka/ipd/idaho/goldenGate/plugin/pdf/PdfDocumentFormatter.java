@@ -230,6 +230,13 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 		}
 		
 		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return false; // we're not saving anything anyway
+		}
+		
+		/* (non-Javadoc)
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.Resource#getName()
 		 */
 		public String getName() {

@@ -144,6 +144,13 @@ public class ValidatingXmlOutputFormatter extends AbstractDocumentFormatProvider
 	
 	private class ValidatingDocumentFormat extends DocumentFormat {
 		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return false;
+		}
+		
 		/*
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#equals(de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat)
 		 */

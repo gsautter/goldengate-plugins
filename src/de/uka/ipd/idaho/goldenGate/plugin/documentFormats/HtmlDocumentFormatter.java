@@ -450,6 +450,13 @@ public class HtmlDocumentFormatter extends AbstractDocumentFormatProvider implem
 			this.tokenizer = tokenizer;
 		}
 		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return false;
+		}
+		
 		/*
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#getDefaultSaveFileExtension()
 		 */

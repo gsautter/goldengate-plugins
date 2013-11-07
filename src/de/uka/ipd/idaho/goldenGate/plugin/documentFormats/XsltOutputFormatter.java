@@ -160,17 +160,33 @@ public class XsltOutputFormatter extends AbstractDocumentFormatProvider {
 			this.add(buttonPanel, BorderLayout.NORTH);
 			this.add(xsltTableBox, BorderLayout.CENTER);
 			
+			this.xsltTable.setColumnModel(new DefaultTableColumnModel() {
+				public TableColumn getColumn(int columnIndex) {
+					TableColumn tc = super.getColumn(columnIndex);
+					if (columnIndex == 0) {
+						tc.setPreferredWidth(70);
+						tc.setMinWidth(70);
+						tc.setMaxWidth(100);
+					}
+					tc.setResizable(true);
+					return tc;
+				}
+			});
+			
 			this.refreshXsltTable();
 		}
 		
 		private void refreshXsltTable() {
 			final StringVector xsltNames = new StringVector();
 			String[] dataNames = dataProvider.getDataNames();
+			System.out.println("XSLT data list: got " + dataNames.length + " data items");
 			for (int n = 0; n < dataNames.length; n++) {
+				System.out.println(" - " + dataNames[n]);
 				if (dataNames[n].toLowerCase().endsWith(".xslt") || dataNames[n].toLowerCase().endsWith(".xsl"))
 					xsltNames.addElement(dataNames[n]);
 			}
 			
+			System.out.println(" ==> " + xsltNames.size() + " stylesheets");
 			this.xsltTable.setModel(new TableModel() {
 				public int getRowCount() {
 					return xsltNames.size();
@@ -212,18 +228,6 @@ public class XsltOutputFormatter extends AbstractDocumentFormatProvider {
 				}
 				public void addTableModelListener(TableModelListener tml) {}
 				public void removeTableModelListener(TableModelListener tml) {}
-			});
-			
-			this.xsltTable.setColumnModel(new DefaultTableColumnModel() {
-				public TableColumn getColumn(int columnIndex) {
-					TableColumn tc = super.getColumn(columnIndex);
-					if (columnIndex == 0) {
-						tc.setPreferredWidth(70);
-						tc.setMinWidth(70);
-					}
-					tc.setResizable(true);
-					return tc;
-				}
 			});
 			
 			this.xsltTable.validate();
@@ -327,6 +331,13 @@ public class XsltOutputFormatter extends AbstractDocumentFormatProvider {
 			this.transformer = transformer;
 		}
 		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return true;
+		}
+		
 		/*
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#getDefaultSaveFileExtension()
 		 */
@@ -392,8 +403,7 @@ public class XsltOutputFormatter extends AbstractDocumentFormatProvider {
 			try {
 				this.transformer.transform(new StreamSource(new AnnotationInputStream(doc, "  ", "utf-8")), new StreamResult(out));
 				out.flush();
-//				return true;
-				return false; // saving with transformation is more an export than actually saving
+				return true;
 			}
 			catch (TransformerException e) {
 				throw new IOException(e.getMessageAndLocation());

@@ -512,6 +512,13 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 			return null;
 		}
 		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return false;
+		}
+		
 		/*
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
 		 */
@@ -580,6 +587,13 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 		 */
 		public String getDefaultSaveFileExtension() {
 			return "xml";
+		}
+		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return true;
 		}
 		
 		/*
@@ -662,6 +676,13 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 		 */
 		public String getDefaultSaveFileExtension() {
 			return "xml";
+		}
+		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return true;
 		}
 		
 		/*
@@ -757,6 +778,13 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 		 */
 		public String getDefaultSaveFileExtension() {
 			return "xml";
+		}
+		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return true;
 		}
 		
 		/*

@@ -136,7 +136,7 @@ import de.uka.ipd.idaho.stringUtils.StringVector;
  */
 public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 	
-	/** the parameter to use for specifying a specific GPath expression whose matches to show/highligh */
+	/** the parameter to use for specifying a specific GPath expression whose matches to show/highlight */
 	public static final String ANNOTATION_FILTER_PATH_PARAMETER = "annotationFilterPath";
 	
 	/** the parameter to use for specifying the name and provider name of an AnnotationFilter whose matches to show/highlight */
@@ -153,9 +153,8 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.AbstractDocumentViewer#showDocument(de.uka.ipd.idaho.gamta.MutableAnnotation, de.uka.ipd.idaho.goldenGate.DocumentEditor, java.util.Properties)
 	 */
 	protected void showDocument(MutableAnnotation doc, DocumentEditor editor, Properties parameters) {
-//		AnnotationNavigatorDialog asd = new AnnotationNavigatorDialog("Navigate Annotations", doc, editor);
-		AnnotationNavigatorDialog asd = new AnnotationNavigatorDialog("Navigate Annotations", doc, editor, this.getFilter(parameters));
-		asd.setVisible(true);
+		AnnotationNavigatorDialog and = new AnnotationNavigatorDialog("Navigate Annotations", doc, editor, this.getFilter(parameters));
+		and.setVisible(true);
 	}
 	
 	private AnnotationFilter getFilter(Properties parameters) {
@@ -401,9 +400,6 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 		
 		private String originalTitle;
 		
-//		private JTabbedPane filterTabs = new JTabbedPane();
-		
-		
 		private JPanel customFilterPanel = new JPanel(new BorderLayout());
 		
 		private StringVector customFilterNames = new StringVector();
@@ -453,128 +449,6 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 			this.setLocationRelativeTo((target == null) ? ((Component) this.getOwner()) : ((Component) target));
 		}
 		
-//		AnnotationNavigatorDialog(String title, MutableAnnotation data, DocumentEditor target) {
-//			super(title, true);
-//			this.originalTitle = title;
-//			
-//			JButton closeButton = new JButton("Close");
-//			closeButton.setBorder(BorderFactory.createRaisedBevelBorder());
-//			closeButton.setPreferredSize(new Dimension(100, 21));
-//			closeButton.addActionListener(new ActionListener() {
-//				public void actionPerformed(ActionEvent ae) {
-//					AnnotationNavigatorDialog.this.dispose();
-//				}
-//			});
-//			
-//			//	create editor
-//			this.annotationDisplay = new AnnotationNavigatorPanel(data, target);
-//			
-//			//	build custom filter panel
-//			AnnotationFilter[] filters = ((target == null) ? DocumentEditor.getActiveAnnotationFilters() : target.getAnnotationFilters());
-//			for (int f = 0; f < filters.length; f++) {
-//				String filterName = filters[f].toString();
-//				this.customFilterNames.addElement(filterName);
-//				this.customFiltersByName.put(filterName, filters[f]);
-//			}
-//			
-//			//	remember which filters are type based
-//			this.annotationTypeFilterNames.addContent(data.getAnnotationTypes());
-//			
-//			this.customFilterSelector.setModel(new DefaultComboBoxModel(this.customFilterNames.toStringArray()));
-//			this.customFilterSelector.setEditable(true);
-//			this.customFilterSelector.setSelectedItem("");
-//			this.customFilterSelector.setBorder(BorderFactory.createLoweredBevelBorder());
-//			this.customFilterSelector.addActionListener(new ActionListener() {
-//				public void actionPerformed(ActionEvent ae) {
-//					if (!customFilterSelector.isVisible()) return;
-//					
-//					else if (customFilterSelectorKeyPressed && !customFilterSelector.isPopupVisible())
-//						AnnotationNavigatorDialog.this.applyCustomFilter();
-//					
-//					else if (customFilterNames.contains(customFilterSelector.getSelectedItem().toString()))
-//						AnnotationNavigatorDialog.this.applyCustomFilter();
-//				}
-//			});
-//			((JTextComponent) this.customFilterSelector.getEditor().getEditorComponent()).addKeyListener(new KeyAdapter() {
-//				public void keyPressed(KeyEvent ke) {
-//					customFilterSelectorKeyPressed = true;
-//				}
-//				public void keyReleased(KeyEvent ke) {
-//					customFilterSelectorKeyPressed = false;
-//				}
-//			});
-//			
-//			JButton applyCustomFilterButton = new JButton("Apply");
-//			applyCustomFilterButton.setBorder(BorderFactory.createRaisedBevelBorder());
-//			applyCustomFilterButton.setPreferredSize(new Dimension(50, 21));
-//			applyCustomFilterButton.addActionListener(new ActionListener() {
-//				public void actionPerformed(ActionEvent ae) {
-//					AnnotationNavigatorDialog.this.applyCustomFilter();
-//				}
-//			});
-//			
-//			this.customFilterPanel.add(this.customFilterSelector, BorderLayout.CENTER);
-//			this.customFilterPanel.add(applyCustomFilterButton, BorderLayout.EAST);
-//			
-//			//	build type & predicate filter panel
-//			String[] types = data.getAnnotationTypes();
-//			Arrays.sort(types, ANNOTATION_TYPE_ORDER);
-//			
-//			this.typeSelector.setModel(new DefaultComboBoxModel(types));
-//			this.typeSelector.setEditable(false);
-//			this.typeSelector.setBorder(BorderFactory.createLoweredBevelBorder());
-//			this.typeSelector.addActionListener(new ActionListener() {
-//				public void actionPerformed(ActionEvent ae) {
-//					if (typeSelector.isVisible())
-//						AnnotationNavigatorDialog.this.applyTpFilter();
-//				}
-//			});
-//			
-//			this.predicateSelector.setModel(new DefaultComboBoxModel(types));
-//			this.predicateSelector.setEditable(true);
-//			this.predicateSelector.setBorder(BorderFactory.createLoweredBevelBorder());
-//			this.predicateSelector.addActionListener(new ActionListener() {
-//				public void actionPerformed(ActionEvent ae) {
-//					if (predicateSelectorKeyPressed && predicateSelector.isVisible() && !predicateSelector.isPopupVisible())
-//						AnnotationNavigatorDialog.this.applyTpFilter();
-//				}
-//			});
-//			((JTextComponent) this.predicateSelector.getEditor().getEditorComponent()).addKeyListener(new KeyAdapter() {
-//				public void keyPressed(KeyEvent ke) {
-//					predicateSelectorKeyPressed = true;
-//				}
-//				public void keyReleased(KeyEvent ke) {
-//					predicateSelectorKeyPressed = false;
-//				}
-//			});
-//			
-//			JButton applyTpFilterButton = new JButton("Apply");
-//			applyTpFilterButton.setBorder(BorderFactory.createRaisedBevelBorder());
-//			applyTpFilterButton.setPreferredSize(new Dimension(50, 21));
-//			applyTpFilterButton.addActionListener(new ActionListener() {
-//				public void actionPerformed(ActionEvent ae) {
-//					AnnotationNavigatorDialog.this.applyTpFilter();
-//				}
-//			});
-//			
-//			this.typePredicateFilterPanel.add(this.typeSelector, BorderLayout.WEST);
-//			this.typePredicateFilterPanel.add(this.predicateSelector, BorderLayout.CENTER);
-//			this.typePredicateFilterPanel.add(applyTpFilterButton, BorderLayout.EAST);
-//			
-//			//	build filter panel
-//			this.filterTabs.addTab("Custom Filters", null, this.customFilterPanel, "Pre-configured & custom filters.");
-//			this.filterTabs.addTab("Type & Predicate Filters", null, this.typePredicateFilterPanel, "Filter with annotation type and custom predicate.");
-//			
-//			//	put the whole stuff together
-//			this.add(this.filterTabs, BorderLayout.NORTH);
-//			this.add(this.annotationDisplay, BorderLayout.CENTER);
-//			this.add(closeButton, BorderLayout.SOUTH);
-//			
-//			this.setResizable(true);
-//			this.setSize(new Dimension(500, 650));
-//			this.setLocationRelativeTo((target == null) ? ((Component) this.getOwner()) : ((Component) target));
-//		}
-		
 		private JTabbedPane buildFilterTabs(MutableAnnotation data, DocumentEditor target) {
 			JTabbedPane filterTabs = new JTabbedPane();
 			
@@ -593,7 +467,6 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 			filterNames.addContentIgnoreDuplicates(customFilterHistory);
 			filterNames.addContent(this.customFilterNames);
 			
-//			this.customFilterSelector.setModel(new DefaultComboBoxModel(this.customFilterNames.toStringArray()));
 			this.customFilterSelector.setModel(new DefaultComboBoxModel(filterNames.toStringArray()));
 			this.customFilterSelector.setEditable(true);
 			this.customFilterSelector.setSelectedItem("");
@@ -1099,7 +972,6 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 			}
 			
 			void sortAnnotations() {
-//				System.out.println("Sorting annotations by " + this.sortColumn + " " + (this.sortDescending ? "d" : "a"));
 				Arrays.sort(this.annotationTrays, new Comparator() {
 					public int compare(Object o1, Object o2) {
 						AnnotationTray at1 = ((AnnotationTray) o1);
@@ -1262,14 +1134,6 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 							editAnnotation(temp);
 							data.removeAnnotation(temp);
 						}
-//						if (rows == 1)
-//							editAnnotation(tray.annotation);
-//						
-//						else {
-//							MutableAnnotation temp = data.addAnnotation(TEMP_ANNOTATION_TYPE, annotationTrays[row].annotation.getStartIndex(), (annotationTrays[row + rows - 1].annotation.getEndIndex() - annotationTrays[row].annotation.getStartIndex()));
-//							editAnnotation(temp);
-//							data.removeAnnotation(temp);
-//						}
 					}
 				});
 				menu.add(mi);
@@ -1305,7 +1169,6 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 				boolean sameType = true;
 				final String type = tray.annotation.getType();
 				for (int r = 1; r < rows; r++)
-//					sameType = (sameType && this.annotationTrays[row + r].annotation.getType().equals(type));
 					sameType = (sameType && trays[r].annotation.getType().equals(type));
 				
 				if (sameType) {
@@ -1334,8 +1197,6 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 				mi = new JMenuItem("Remove");
 				mi.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent ae) {
-//						for (int r = 0; r < rows; r++)
-//							data.removeAnnotation(annotationTrays[row + r].annotation);
 						for (int r = 0; r < trays.length; r++)
 							data.removeAnnotation(trays[r].annotation);
 						refreshAnnotations();
@@ -1363,8 +1224,6 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 				mi = new JMenuItem("Delete");
 				mi.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent ae) {
-//						for (int r = rows; r > 0; r--)
-//							data.removeTokens(annotationTrays[row + r - 1].annotation);
 						for (int r = trays.length; r > 0; r--)
 							data.removeTokens(trays[r - 1].annotation);
 						refreshAnnotations();
@@ -1884,10 +1743,6 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 					this.tooltipColumns.add("" + tooltipColumn);
 					this.tokenizer = tokenizer;
 				}
-//				TooltipAwareComponentRenderer(int[] tooltipColumns) {
-//					for (int c = 0; c < tooltipColumns.length; c++)
-//						this.tooltipColumns.add("" + tooltipColumns[c]);
-//				}
 				public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
 					JComponent component = ((value instanceof JComponent) ? ((JComponent) value) : (JComponent) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column));
 					if (this.tooltipColumns.contains("" + row) && (component instanceof JComponent))

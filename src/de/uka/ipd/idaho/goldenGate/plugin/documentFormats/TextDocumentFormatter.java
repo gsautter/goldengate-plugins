@@ -132,6 +132,13 @@ public class TextDocumentFormatter extends AbstractDocumentFormatProvider {
 		
 		TextDocumentFormat() {}
 		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return true;
+		}
+		
 		/*
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#getDefaultSaveFileExtension()
 		 */
@@ -164,9 +171,6 @@ public class TextDocumentFormatter extends AbstractDocumentFormatProvider {
 					paragraphStart = mts.size();
 				}
 			}
-//			
-//			//	create token & markup overlay
-//			return Gamta.newDocument(mts);
 			
 			//	create markup overlay
 			MutableAnnotation data = Gamta.newDocument(mts);
@@ -257,6 +261,13 @@ public class TextDocumentFormatter extends AbstractDocumentFormatProvider {
 	private class LsTextDocumentFormat extends DocumentFormat {
 		
 		LsTextDocumentFormat() {}
+		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return false;
+		}
 		
 		/*
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#getDefaultSaveFileExtension()

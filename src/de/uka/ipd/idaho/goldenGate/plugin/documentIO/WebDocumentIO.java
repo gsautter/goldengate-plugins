@@ -432,6 +432,13 @@ public class WebDocumentIO extends AbstractDocumentIO {
 		}
 		
 		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentSaveOperation#keepAsDefault()
+		 */
+		public boolean keepAsDefault() {
+			return false;
+		}
+		
+		/* (non-Javadoc)
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentSaveOperation#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation)
 		 */
 		public String saveDocument(QueriableAnnotation data) {

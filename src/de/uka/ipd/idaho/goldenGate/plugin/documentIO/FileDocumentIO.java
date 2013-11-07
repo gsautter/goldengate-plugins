@@ -618,6 +618,13 @@ public class FileDocumentIO extends AbstractDocumentIO {
 			this.format = format;
 		}
 		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentSaveOperation#keepAsDefault()
+		 */
+		public boolean keepAsDefault() {
+			return false;
+		}
+		
 		/*
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentSaveOperation#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation)
 		 */

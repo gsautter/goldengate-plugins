@@ -162,6 +162,13 @@ public class CustomEncodingDocumentFormatter extends AbstractDocumentFormatProvi
 	
 	private class CustomEncodingDocumentFormat extends DocumentFormat {
 		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return false;
+		}
+		
 		/*
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#equals(de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat)
 		 */

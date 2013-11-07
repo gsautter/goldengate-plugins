@@ -534,6 +534,13 @@ public class DocumentReaderManager extends AbstractDocumentFormatProvider {
 			return "xml";
 		}
 		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return false;
+		}
+		
 		/*
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#loadDocument(java.io.Reader)
 		 */
@@ -616,6 +623,13 @@ public class DocumentReaderManager extends AbstractDocumentFormatProvider {
 		 */
 		public String getDefaultSaveFileExtension() {
 			return "xml";
+		}
+		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return false;
 		}
 		
 		/*
@@ -709,6 +723,13 @@ public class DocumentReaderManager extends AbstractDocumentFormatProvider {
 		 */
 		public String getDefaultSaveFileExtension() {
 			return "xml";
+		}
+		
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
+		 */
+		public boolean isExportFormat() {
+			return false;
 		}
 		
 		/*
