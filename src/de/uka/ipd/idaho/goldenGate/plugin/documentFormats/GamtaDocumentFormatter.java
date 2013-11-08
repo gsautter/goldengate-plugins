@@ -170,7 +170,7 @@ public class GamtaDocumentFormatter extends AbstractDocumentFormatProvider {
 			
 			//	tag does not start with first character, probably BOM
 			if (firstChar != 0)
-				return super.getInputStreamReader(source);
+				return super.getInputStreamReader(bis);
 			
 			//	parse start tag
 			if ((firstChar < lookaheads.length) && (lookaheads[firstChar] == '<')) {
@@ -208,7 +208,7 @@ public class GamtaDocumentFormatter extends AbstractDocumentFormatProvider {
 			}
 			
 			//	could not parse encoding, let default method do the rest
-			return super.getInputStreamReader(source);
+			return super.getInputStreamReader(bis);
 		}
 		
 		/*
