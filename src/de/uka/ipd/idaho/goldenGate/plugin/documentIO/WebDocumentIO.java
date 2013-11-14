@@ -35,6 +35,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -64,10 +65,10 @@ import de.uka.ipd.idaho.stringUtils.StringUtils;
 import de.uka.ipd.idaho.stringUtils.accessories.StringSelector;
 
 /**
- * Document IO implementation enabeling the GoldenGATE Editor to load documents
+ * Document IO implementation enabling the GoldenGATE Editor to load documents
  * from URLs. Writing data to a URL is a hard thing to do, for there are many
  * ways web servers can receive data, and it's close to impossible to implement
- * them all. If the protocol opf a URL to save a document to is HTTP, this class
+ * them all. If the protocol of a URL to save a document to is HTTP, this class
  * uses the PUT method. For the other supported protocols, namely FTP and FILE,
  * no request method is set. This class does not support HTTPS.
  * 
@@ -95,11 +96,6 @@ public class WebDocumentIO extends AbstractDocumentIO {
 	 */
 	public JMenuItem getLoadDocumentMenuItem() {
 		JMenuItem mi = new JMenuItem("Load Document from URL");
-//		mi.addActionListener(new ActionListener() {
-//			public void actionPerformed(ActionEvent ae) {
-//				loadDocumentFromUrl();
-//			}
-//		});
 		return mi;
 	}
 	
@@ -133,7 +129,7 @@ public class WebDocumentIO extends AbstractDocumentIO {
 			}
 		}
 		
-		//	prompt for url to load document form
+		//	prompt for URL to load document form
 		UrlIoDialog uid = new UrlIoDialog("Load Document From URL", this.lastLoadUrl, "Load", ((DocumentFormat[]) formatList.toArray(new DocumentFormat[formatList.size()])), null);
 		if ((defaultFormat != null) && ((chosenFormat == null) || enforceDefaultFormat))
 			uid.formatChooser.setSelectedItem(defaultFormat);
@@ -151,15 +147,13 @@ public class WebDocumentIO extends AbstractDocumentIO {
 		if (urlString != null) {
 			try {
 				URL url = this.dataProvider.getURL(urlString);
-				InputStream is = url.openStream();
+				LoadInputStream lis = new LoadInputStream(url.openStream());
+				LoadTimeoutWatchdog ltw = new LoadTimeoutWatchdog(2000, urlString, lis);
+				ltw.start();
 				
-				LoadTimer timer = new LoadTimer(10000, urlString, is);
-				timer.start();
+				DocumentData dd = new DocumentData(format.loadDocument(lis), StringUtils.replaceAll((url.getHost() + url.getPath()), "/", "."), format);
 				
-				DocumentData dd = new DocumentData(format.loadDocument(is), StringUtils.replaceAll((url.getHost() + url.getPath()), "/", "."), format);
-				
-				timer.stopTimer();
-				is.close();
+				lis.close();
 				
 				this.lastLoadUrl = urlString;
 				this.lastLoadFormat = format;
@@ -171,6 +165,50 @@ public class WebDocumentIO extends AbstractDocumentIO {
 			}
 		}
 		else return null;
+	}
+	
+	private class LoadInputStream extends FilterInputStream {
+		long lastRead = System.currentTimeMillis();
+		boolean open = true;
+		LoadInputStream(InputStream in) {
+			super(in);
+		}
+		public int read() throws IOException {
+			int r = super.read();
+			this.lastRead = System.currentTimeMillis();
+			return r;
+		}
+		public int read(byte[] b, int off, int len) throws IOException {
+			int r = super.read(b, off, len);
+			this.lastRead = System.currentTimeMillis();
+			return r;
+		}
+		public void close() throws IOException {
+			super.close();
+			this.open = false;
+		}
+	}
+	
+	private class LoadTimeoutWatchdog extends Thread {
+		private long timeout;
+		private String url;
+		private LoadInputStream toWatch;
+		LoadTimeoutWatchdog(long timeout, String url, LoadInputStream toWatch) {
+			this.timeout = timeout;
+			this.url = url;
+			this.toWatch = toWatch;
+		}
+		public void run() {
+			while (this.toWatch.open) {
+				try {
+					Thread.sleep(this.timeout / 2);
+				} catch (InterruptedException ie) {}
+				if (this.toWatch.lastRead < (System.currentTimeMillis() - this.timeout)) try {
+					System.out.println("WebDocumentIO.LoadTimer: Loading document from " + this.url + " timed out, closing connection.");
+					this.toWatch.close();
+				} catch (Exception e) {}
+			}
+		}
 	}
 	
 	/*
@@ -321,104 +359,16 @@ public class WebDocumentIO extends AbstractDocumentIO {
 		
 		if (urlString != null) {
 			try {
-//				URL url = new URL(urlString);
 				URL url = this.dataProvider.getURL(urlString);
 				this.lastSaveUrl = urlString;
 				this.lastSaveFormat = format;
 				return new UrlSaveOperation(url, format);
-			} catch (IOException ioe) {
+			}
+			catch (IOException ioe) {
 				JOptionPane.showMessageDialog(DialogPanel.getTopWindow(), "The specified URL is invalid.", "Invalid URL", JOptionPane.ERROR_MESSAGE);
 				return null;
 			}
 		} else return null;
-	}
-	
-//	private void loadDocumentFromUrl() {
-//		
-//		//	ask if web access allowed if in offline mode
-//		if (!this.dataProvider.allowWebAccess() && (JOptionPane.showConfirmDialog(DialogPanel.getTopWindow(), "GoldenGATE is in offline mode, allow loading document from URL anyway?", "Allow Web Access", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE) != JOptionPane.YES_OPTION))
-//			return;
-//		
-//		//	get document formats
-//		DocumentFormatProvider[] formatters = this.parent.getDocumentFormatProviders();
-//		ArrayList formatList = new ArrayList();
-//		String defaultFormatName = DocumentFormat.getDefaultLoadFormatName();
-//		boolean enforceDefaultFormat = DocumentFormat.enforceDefaultSaveFormat();
-//		DocumentFormat defaultFormat = null;
-//		DocumentFormat chosenFormat = null;
-//		DocumentFormat htmlFormat = null;
-//		for (int d = 0; d < formatters.length; d++) {
-//			DocumentFormat[] formats = formatters[d].getLoadFileFilters();
-//			for (int f = 0; f < formats.length; f++) {
-//				formatList.add(formats[f]);
-//				if ((defaultFormatName != null) && defaultFormatName.equals(formats[f].getDescription()))
-//					defaultFormat = formats[f]; 
-//				if (formats[f].equals(this.lastLoadFormat))
-//					chosenFormat = formats[f];
-//				if ((htmlFormat == null) && formats[f].accept(testFileName))
-//					htmlFormat = formats[f];
-//			}
-//		}
-//		
-//		//	prompt for url to load document form
-//		UrlIoDialog uid = new UrlIoDialog("Load Document From URL", this.lastLoadUrl, "Load", ((DocumentFormat[]) formatList.toArray(new DocumentFormat[formatList.size()])), null);
-//		if ((defaultFormat != null) && ((chosenFormat == null) || enforceDefaultFormat))
-//			uid.formatChooser.setSelectedItem(defaultFormat);
-//		else if (chosenFormat != null)
-//			uid.formatChooser.setSelectedItem(chosenFormat);
-//		else if (htmlFormat != null)
-//			uid.formatChooser.setSelectedItem(htmlFormat);
-//		
-//		uid.setLocationRelativeTo(DialogPanel.getTopWindow());
-//		uid.setVisible(true);
-//		
-//		//	load document
-//		String urlString = uid.getUrl();
-//		DocumentFormat format = uid.getFormat(); 
-//		if (urlString != null) {
-//			try {
-////				URL url = new URL(urlString);
-//				URL url = this.dataProvider.getURL(urlString);
-//				InputStream is = url.openStream();
-//				
-//				LoadTimer timer = new LoadTimer(10000, urlString, is);
-//				timer.start();
-//				
-//				this.parent.openDocument(format.loadDocument(is), StringUtils.replaceAll((url.getHost() + url.getPath()), "/", "."), format);
-//				
-//				timer.stopTimer();
-//				is.close();
-//				
-//				this.lastLoadUrl = urlString;
-//				this.lastLoadFormat = format;
-//			} catch (IOException ioe) {
-//				JOptionPane.showMessageDialog(DialogPanel.getTopWindow(), (ioe.getClass().getName() + " (" + ioe.getMessage() + ")\nwhile trying to load " + urlString), "Could Not Load Document From URL", JOptionPane.ERROR_MESSAGE);
-//			}
-//		}
-//	}
-	
-	private class LoadTimer extends Thread {
-		private long timeout;
-		private String url;
-		private InputStream toWatch;
-		private boolean isStopped = false;
-		LoadTimer(long timeout, String url, InputStream toWatch) {
-			this.timeout = timeout;
-			this.url = url;
-			this.toWatch = toWatch;
-		}
-		public void run() {
-			try {
-				Thread.sleep(this.timeout);
-				if (!this.isStopped) {
-					System.out.println("WebDocumentIO.LoadTimer: Loading document from " + this.url + " timed out after 10 seconds, closing connection.");
-					this.toWatch.close();
-				}
-			} catch (Exception e) {}
-		}
-		void stopTimer() {
-			this.isStopped = true;
-		}
 	}
 	
 	private class UrlSaveOperation implements DocumentSaveOperation {
@@ -490,7 +440,7 @@ public class WebDocumentIO extends AbstractDocumentIO {
 		 * @param data the document to save
 		 * @return a SaveOperation to save the document again with the same
 		 *         configuration, or null, if this SaveOperation cannot be used
-		 *         again (for insance if a session can be used only once)
+		 *         again (for instance if a session can be used only once)
 		 */
 		public String saveDocument(DocumentEditor data) {
 			
@@ -555,13 +505,6 @@ public class WebDocumentIO extends AbstractDocumentIO {
 			return this.format;
 		}
 		
-//		/*
-//		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentSaveOperation#getDocumentSaver()
-//		 */
-//		public DocumentSaver getDocumentSaver() {
-//			return WebDocumentIO.this;
-//		}
-//		
 		/*
 		 * @return the title of a document after it has been saved through this SaveOperation
 		 */
