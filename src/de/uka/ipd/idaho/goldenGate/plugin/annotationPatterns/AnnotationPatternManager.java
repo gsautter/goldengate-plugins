@@ -37,6 +37,8 @@ import java.awt.GridBagLayout;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
@@ -47,7 +49,9 @@ import java.util.Properties;
 import java.util.regex.PatternSyntaxException;
 
 import javax.swing.BorderFactory;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -72,6 +76,8 @@ import de.uka.ipd.idaho.gamta.QueriableAnnotation;
 import de.uka.ipd.idaho.gamta.util.AnnotationPatternMatcher;
 import de.uka.ipd.idaho.gamta.util.AnnotationPatternMatcher.MatchTree;
 import de.uka.ipd.idaho.gamta.util.swing.AnnotationDisplayDialog;
+import de.uka.ipd.idaho.goldenGate.DocumentEditor;
+import de.uka.ipd.idaho.goldenGate.GoldenGateConstants;
 import de.uka.ipd.idaho.goldenGate.plugins.AbstractAnnotationSourceManager;
 import de.uka.ipd.idaho.goldenGate.plugins.AnnotationSource;
 import de.uka.ipd.idaho.goldenGate.plugins.AnnotationSourceParameterPanel;
@@ -81,6 +87,7 @@ import de.uka.ipd.idaho.goldenGate.util.EditFontsButton;
 import de.uka.ipd.idaho.goldenGate.util.FontEditable;
 import de.uka.ipd.idaho.goldenGate.util.FontEditorDialog;
 import de.uka.ipd.idaho.goldenGate.util.FontEditorPanel;
+import de.uka.ipd.idaho.stringUtils.StringVector;
 
 /**
  * Manager for annotation patterns as annotation sources. Annotation patterns
@@ -94,7 +101,12 @@ import de.uka.ipd.idaho.goldenGate.util.FontEditorPanel;
  */
 public class AnnotationPatternManager extends AbstractAnnotationSourceManager {
 	
+	private static final String AD_HOC_ANNOTATION_PATTERN_NAME = "AdHoc";
+	
 	private static final String FILE_EXTENSION = ".annotationPattern";
+	
+	private StringVector adHocAnnotationPatternHistory = new StringVector();
+	private int adHocAnnotationPatternHistorySize = 20;
 	
 	public AnnotationPatternManager() {}
 	
@@ -106,10 +118,30 @@ public class AnnotationPatternManager extends AbstractAnnotationSourceManager {
 		QueriableAnnotation data = this.parent.getActiveDocument();
 		return ((data == null) ? null : AnnotationPatternMatcher.getMatchTrees(data, pattern));
 	}
-//	private Annotation[] testAnnotationPattern(String pattern) {
-//		QueriableAnnotation data = this.parent.getActiveDocument();
-//		return ((data == null) ? null : AnnotationPatternMatcher.getMatches(data, pattern));
-//	}
+	
+	/* (non-Javadoc)
+	 * @see de.uka.ipd.idaho.goldenGate.plugins.AbstractGoldenGatePlugin#getToolsMenuFunctionItems(de.uka.ipd.idaho.goldenGate.GoldenGateConstants.InvokationTargetProvider)
+	 */
+	public JMenuItem[] getToolsMenuFunctionItems(final InvokationTargetProvider targetProvider) {
+		ArrayList collector = new ArrayList();
+		JMenuItem mi;
+		
+		mi = new JMenuItem("Ad Hoc (enter and apply)");
+		mi.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent ae) {
+				applyAdHocAnnotationPattern(targetProvider.getFunctionTarget());
+			}
+		});
+		collector.add(mi);
+		return ((JMenuItem[]) collector.toArray(new JMenuItem[collector.size()]));
+	}
+	
+	private void applyAdHocAnnotationPattern(DocumentEditor target) {
+		if (target == null)
+			target = this.parent.getActivePanel();
+		if (target != null)
+			this.applyAnnotationSource(AD_HOC_ANNOTATION_PATTERN_NAME, target, new Properties());
+	}
 	
 	/* 
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.AnnotationSourceManager#createAnnotationSource()
@@ -144,8 +176,115 @@ public class AnnotationPatternManager extends AbstractAnnotationSourceManager {
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.AnnotationSourceManager#getAnnotationSource(java.lang.String)
 	 */
 	public AnnotationSource getAnnotationSource(String name) {
+		if (AD_HOC_ANNOTATION_PATTERN_NAME.equals(name))
+			return this.getAdHocAnnotationPatternAnnotationSource();
 		String annotationPattern = this.getAnnotationPattern(name);
 		return ((annotationPattern == null) ? null : new AnnotationPatternAnnotationSource(name, annotationPattern));
+	}
+	
+	
+	private AnnotationPatternAnnotationSource getAdHocAnnotationPatternAnnotationSource() {
+		AdHocAnnotationPatternDialog ahred = new AdHocAnnotationPatternDialog();
+		ahred.setLocationRelativeTo(DialogPanel.getTopWindow());
+		ahred.setVisible(true);
+		if (ahred.isCommitted()) {
+			String annotationPattern = ahred.getAnnotationPattern();
+			return ((annotationPattern.trim().length() == 0) ? null : new AnnotationPatternAnnotationSource("Ad-Hoc Annotation Pattern", annotationPattern));
+		}
+		else return null;
+	}
+	
+	private class AdHocAnnotationPatternDialog extends DialogPanel {
+		private AnnotationPatternEditorPanel editor;
+		private String annotationPattern = null;
+		
+		AdHocAnnotationPatternDialog() {
+			super("Enter Ad-Hoc Annotation Pattern", true);
+			
+			final JComboBox adHocAnnotationPatternSelector = new JComboBox();
+			adHocAnnotationPatternSelector.setModel(new DefaultComboBoxModel(adHocAnnotationPatternHistory.toStringArray()));
+			adHocAnnotationPatternSelector.setEditable(false);
+			adHocAnnotationPatternSelector.setSelectedItem(adHocAnnotationPatternHistory.isEmpty() ? "" : adHocAnnotationPatternHistory.get(0));
+			adHocAnnotationPatternSelector.setBorder(BorderFactory.createLoweredBevelBorder());
+			adHocAnnotationPatternSelector.addItemListener(new ItemListener() {
+				public void itemStateChanged(ItemEvent ie) {
+					editor.setContent(adHocAnnotationPatternSelector.getSelectedItem().toString());
+				}
+			});
+			
+			JPanel adHocAnnotationPatternPanel = new JPanel(new BorderLayout());
+			adHocAnnotationPatternPanel.add(new JLabel("Recently Used: "), BorderLayout.WEST);
+			adHocAnnotationPatternPanel.add(adHocAnnotationPatternSelector, BorderLayout.CENTER);
+			
+			//	initialize main buttons
+			JButton commitButton = new JButton("Apply");
+			commitButton.setBorder(BorderFactory.createRaisedBevelBorder());
+			commitButton.setPreferredSize(new Dimension(100, 21));
+			commitButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					commit();
+				}
+			});
+			
+			JButton abortButton = new JButton("Cancel");
+			abortButton.setBorder(BorderFactory.createRaisedBevelBorder());
+			abortButton.setPreferredSize(new Dimension(100, 21));
+			abortButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					abort();
+				}
+			});
+			
+			JPanel mainButtonPanel = new JPanel(new FlowLayout());
+			mainButtonPanel.add(commitButton);
+			mainButtonPanel.add(abortButton);
+			
+			//	initialize editor
+			this.editor = new AnnotationPatternEditorPanel("AdHoc", "", this);
+			
+			//	put the whole stuff together
+			this.setLayout(new BorderLayout());
+			this.add(adHocAnnotationPatternPanel, BorderLayout.NORTH);
+			this.add(this.editor, BorderLayout.CENTER);
+			this.add(mainButtonPanel, BorderLayout.SOUTH);
+			
+			this.setResizable(true);
+			this.setSize(new Dimension(600, 400));
+			this.setLocationRelativeTo(DialogPanel.getTopWindow());
+		}
+		
+		boolean isCommitted() {
+			return (this.annotationPattern != null);
+		}
+		
+		String getAnnotationPattern() {
+			return this.annotationPattern;
+		}
+		
+		void abort() {
+			this.annotationPattern = null;
+			this.dispose();
+		}
+
+		void commit() {
+			this.annotationPattern = this.editor.getAnnotationPattern();
+			if (this.annotationPattern.trim().length() == 0)
+				this.annotationPattern = null;
+			else {
+				try {
+					AnnotationPatternMatcher.getMatches(Gamta.newDocument(Gamta.INNER_PUNCTUATION_TOKENIZER), AnnotationPatternMatcher.normalizePattern(this.annotationPattern));
+				}
+				catch (PatternSyntaxException pse) {
+					JOptionPane.showMessageDialog(this, ("The annotation pattern you entered is not valid:\n" + pse.getMessage()), "Annotation Pattern Validation Failed", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+				adHocAnnotationPatternHistory.removeAll(this.annotationPattern);
+				adHocAnnotationPatternHistory.insertElementAt(this.annotationPattern, 0);
+				while (adHocAnnotationPatternHistory.size() > adHocAnnotationPatternHistorySize)
+					adHocAnnotationPatternHistory.removeElementAt(adHocAnnotationPatternHistorySize);
+			}
+			this.dispose();
+		}
 	}
 	
 	private class AnnotationPatternAnnotationSource implements AnnotationSource {
@@ -249,26 +388,35 @@ public class AnnotationPatternManager extends AbstractAnnotationSourceManager {
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.AnnotationSourceManager#getMainMenuItems()
 	 */
 	public JMenuItem[] getMainMenuItems() {
-		if (!this.dataProvider.isDataEditable())
-			return new JMenuItem[0];
-		
 		ArrayList collector = new ArrayList();
 		JMenuItem mi;
 		
-		mi = new JMenuItem("Create");
+		if (this.dataProvider.isDataEditable()) {
+			mi = new JMenuItem("Create");
+			mi.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent ae) {
+					createAnnotationPattern();
+				}
+			});
+			collector.add(mi);
+			mi = new JMenuItem("Edit");
+			mi.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent ae) {
+					editAnnotationPatternes();
+				}
+			});
+			collector.add(mi);
+			collector.add(GoldenGateConstants.MENU_SEPARATOR_ITEM);
+		}
+		
+		mi = new JMenuItem("Ad Hoc (enter and apply)");
 		mi.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent ae) {
-				createAnnotationPattern();
+				applyAdHocAnnotationPattern(null);
 			}
 		});
 		collector.add(mi);
-		mi = new JMenuItem("Edit");
-		mi.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent ae) {
-				editAnnotationPatternes();
-			}
-		});
-		collector.add(mi);
+		
 		return ((JMenuItem[]) collector.toArray(new JMenuItem[collector.size()]));
 	}
 	

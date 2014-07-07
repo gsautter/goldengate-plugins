@@ -49,8 +49,10 @@ import java.util.Properties;
 import java.util.regex.PatternSyntaxException;
 
 import javax.swing.BorderFactory;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -74,6 +76,8 @@ import de.uka.ipd.idaho.gamta.Gamta;
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
 import de.uka.ipd.idaho.gamta.QueriableAnnotation;
 import de.uka.ipd.idaho.gamta.util.swing.AnnotationDisplayDialog;
+import de.uka.ipd.idaho.goldenGate.DocumentEditor;
+import de.uka.ipd.idaho.goldenGate.GoldenGateConstants;
 import de.uka.ipd.idaho.goldenGate.plugin.lists.ListManager;
 import de.uka.ipd.idaho.goldenGate.plugins.AbstractAnnotationSourceManager;
 import de.uka.ipd.idaho.goldenGate.plugins.AnnotationSource;
@@ -113,6 +117,8 @@ import de.uka.ipd.idaho.stringUtils.regExUtils.RegExUtils;
  */
 public class RegExManager extends AbstractAnnotationSourceManager {
 	
+	private static final String AD_HOC_REGEX_NAME = "AdHoc";
+	
 	private static final String FILE_EXTENSION = ".regEx";
 	
 	private static final String[] FIX_REGEX_NAMES = {
@@ -128,7 +134,7 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 			"<Capitalized Long Abbreviation>", 
 			"<First Name>", 
 			"<Last Name>", 
-			"<Person Name>"
+			"<Person Name>",
 		};
 	private static final String[] FIX_REGEXES = {
 			RegExUtils.WORD, 
@@ -143,8 +149,11 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 			RegExUtils.CAPITALIZED_LONG_ABBREVIATION, 
 			RegExUtils.FIRST_NAME, 
 			RegExUtils.LAST_NAME, 
-			RegExUtils.PERSON_NAME
+			RegExUtils.PERSON_NAME,
 		};
+	
+	private StringVector adHocRegExHistory = new StringVector();
+	private int adHocRegExHistorySize = 20;
 	
 	private ListManager listProvider;
 	private JFileChooser fileChooser = null;
@@ -156,6 +165,18 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 	 */
 	public void init() {
 		this.listProvider = ((ListManager) this.parent.getAnnotationSourceProvider(ListManager.class.getName()));
+		StringVector adHocRegExHistory = this.loadListResource("adHocRegExHistory.cnfg");
+		if (adHocRegExHistory != null)
+			this.adHocRegExHistory.addContent(adHocRegExHistory);
+	}
+	
+	/* (non-Javadoc)
+	 * @see de.uka.ipd.idaho.goldenGate.plugins.AbstractGoldenGatePlugin#exit()
+	 */
+	public void exit() {
+		try {
+			this.storeListResource("adHocRegExHistory.cnfg", this.adHocRegExHistory);
+		} catch (IOException ioe) {}
 	}
 	
 	/*
@@ -172,6 +193,30 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 	private Annotation[] testRegEx(String regEx) {
 		QueriableAnnotation data = this.parent.getActiveDocument();
 		return ((data == null) ? null : Gamta.extractAllMatches(data, regEx, 20));
+	}
+	
+	/* (non-Javadoc)
+	 * @see de.uka.ipd.idaho.goldenGate.plugins.AbstractGoldenGatePlugin#getToolsMenuFunctionItems(de.uka.ipd.idaho.goldenGate.GoldenGateConstants.InvokationTargetProvider)
+	 */
+	public JMenuItem[] getToolsMenuFunctionItems(final InvokationTargetProvider targetProvider) {
+		ArrayList collector = new ArrayList();
+		JMenuItem mi;
+		
+		mi = new JMenuItem("Ad Hoc (enter and apply)");
+		mi.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent ae) {
+				applyAdHocRegEx(targetProvider.getFunctionTarget());
+			}
+		});
+		collector.add(mi);
+		return ((JMenuItem[]) collector.toArray(new JMenuItem[collector.size()]));
+	}
+	
+	private void applyAdHocRegEx(DocumentEditor target) {
+		if (target == null)
+			target = this.parent.getActivePanel();
+		if (target != null)
+			this.applyAnnotationSource(AD_HOC_REGEX_NAME, target, new Properties());
 	}
 	
 	/* 
@@ -207,8 +252,113 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.AnnotationSourceManager#getAnnotationSource(java.lang.String)
 	 */
 	public AnnotationSource getAnnotationSource(String name) {
+		if (AD_HOC_REGEX_NAME.equals(name))
+			return this.getAdHocRegExAnnotationSource();
 		String regEx = this.getRegEx(name);
 		return ((regEx == null) ? null : new RegExAnnotationSource(name, regEx, this.listProvider));
+	}
+	
+	private RegExAnnotationSource getAdHocRegExAnnotationSource() {
+		AdHocRegExDialog ahred = new AdHocRegExDialog();
+		ahred.setLocationRelativeTo(DialogPanel.getTopWindow());
+		ahred.setVisible(true);
+		if (ahred.isCommitted()) {
+			String regEx = ahred.getRegEx();
+			return ((regEx.trim().length() == 0) ? null : new RegExAnnotationSource("Ad-Hoc RegEx", regEx, this.listProvider));
+		}
+		else return null;
+	}
+	
+	private class AdHocRegExDialog extends DialogPanel {
+		private RegExEditorPanel editor;
+		private String regEx = null;
+		
+		AdHocRegExDialog() {
+			super("Enter Ad-Hoc RegEx", true);
+			
+			final JComboBox adHocRegExSelector = new JComboBox();
+			adHocRegExSelector.setModel(new DefaultComboBoxModel(adHocRegExHistory.toStringArray()));
+			adHocRegExSelector.setEditable(false);
+			adHocRegExSelector.setSelectedItem(adHocRegExHistory.isEmpty() ? "" : adHocRegExHistory.get(0));
+			adHocRegExSelector.setBorder(BorderFactory.createLoweredBevelBorder());
+			adHocRegExSelector.addItemListener(new ItemListener() {
+				public void itemStateChanged(ItemEvent ie) {
+					editor.setContent(adHocRegExSelector.getSelectedItem().toString());
+				}
+			});
+			
+			JPanel adHocRegExPanel = new JPanel(new BorderLayout());
+			adHocRegExPanel.add(new JLabel("Recently Used: "), BorderLayout.WEST);
+			adHocRegExPanel.add(adHocRegExSelector, BorderLayout.CENTER);
+			
+			//	initialize main buttons
+			JButton commitButton = new JButton("Apply");
+			commitButton.setBorder(BorderFactory.createRaisedBevelBorder());
+			commitButton.setPreferredSize(new Dimension(100, 21));
+			commitButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					commit();
+				}
+			});
+			
+			JButton abortButton = new JButton("Cancel");
+			abortButton.setBorder(BorderFactory.createRaisedBevelBorder());
+			abortButton.setPreferredSize(new Dimension(100, 21));
+			abortButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					abort();
+				}
+			});
+			
+			JPanel mainButtonPanel = new JPanel(new FlowLayout());
+			mainButtonPanel.add(commitButton);
+			mainButtonPanel.add(abortButton);
+			
+			//	initialize editor
+			this.editor = new RegExEditorPanel("AdHoc", "", this);
+			
+			//	put the whole stuff together
+			this.setLayout(new BorderLayout());
+			this.add(adHocRegExPanel, BorderLayout.NORTH);
+			this.add(this.editor, BorderLayout.CENTER);
+			this.add(mainButtonPanel, BorderLayout.SOUTH);
+			
+			this.setResizable(true);
+			this.setSize(new Dimension(600, 400));
+			this.setLocationRelativeTo(DialogPanel.getTopWindow());
+		}
+		
+		boolean isCommitted() {
+			return (this.regEx != null);
+		}
+		
+		String getRegEx() {
+			return this.regEx;
+		}
+		
+		void abort() {
+			this.regEx = null;
+			this.dispose();
+		}
+
+		void commit() {
+			this.regEx = this.editor.getRegEx();
+			if (this.regEx.trim().length() == 0)
+				this.regEx = null;
+			else {
+				try {
+					"".matches(RegExUtils.normalizeRegEx(this.regEx));
+				} catch (PatternSyntaxException pse) {
+					JOptionPane.showMessageDialog(this, ("The regulare expression you entered is not a valid pattern:\n" + pse.getMessage()), "RegEx Validation Failed", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+				adHocRegExHistory.removeAll(this.regEx);
+				adHocRegExHistory.insertElementAt(this.regEx, 0);
+				while (adHocRegExHistory.size() > adHocRegExHistorySize)
+					adHocRegExHistory.removeElementAt(adHocRegExHistorySize);
+			}
+			this.dispose();
+		}
 	}
 	
 	private class RegExAnnotationSource implements AnnotationSource {
@@ -447,33 +597,42 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.AnnotationSourceManager#getMainMenuItems()
 	 */
 	public JMenuItem[] getMainMenuItems() {
-		if (!this.dataProvider.isDataEditable())
-			return new JMenuItem[0];
-		
 		ArrayList collector = new ArrayList();
 		JMenuItem mi;
 		
-		mi = new JMenuItem("Create");
+		if (this.dataProvider.isDataEditable()) {
+			mi = new JMenuItem("Create");
+			mi.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent ae) {
+					createRegEx();
+				}
+			});
+			collector.add(mi);
+			mi = new JMenuItem("Load");
+			mi.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent ae) {
+					loadRegEx();
+				}
+			});
+			collector.add(mi);
+			mi = new JMenuItem("Edit");
+			mi.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent ae) {
+					editRegExes();
+				}
+			});
+			collector.add(mi);
+			collector.add(GoldenGateConstants.MENU_SEPARATOR_ITEM);
+		}
+		
+		mi = new JMenuItem("Ad Hoc (enter and apply)");
 		mi.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent ae) {
-				createRegEx();
+				applyAdHocRegEx(null);
 			}
 		});
 		collector.add(mi);
-		mi = new JMenuItem("Load");
-		mi.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent ae) {
-				loadRegEx();
-			}
-		});
-		collector.add(mi);
-		mi = new JMenuItem("Edit");
-		mi.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent ae) {
-				editRegExes();
-			}
-		});
-		collector.add(mi);
+		
 		return ((JMenuItem[]) collector.toArray(new JMenuItem[collector.size()]));
 	}
 	
@@ -491,10 +650,6 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 		return "Apply";
 	}
 	
-	/* retrieve a plain String representation of a regular expression by its name
-	 * @param	name	the name of the reqired regular expression
-	 * @return the String representation of the regular expression with the required name, or null, if there is no such regular expression
-	 */
 	private String getRegEx(String name) {
 		if (name == null) return null;
 		
@@ -842,7 +997,7 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 			refreshButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			refreshButton.setPreferredSize(new Dimension(115, 21));
 			refreshButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					refreshRegEx();
 				}
 			});
@@ -851,7 +1006,7 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 			validateButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			validateButton.setPreferredSize(new Dimension(115, 21));
 			validateButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					validateRegEx();
 				}
 			});
@@ -860,7 +1015,7 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 			testButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			testButton.setPreferredSize(new Dimension(115, 21));
 			testButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					testRegEx();
 				}
 			});
@@ -869,7 +1024,7 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 			enumerationButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			enumerationButton.setPreferredSize(new Dimension(115, 21));
 			enumerationButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					produceEnumeration();
 				}
 			});

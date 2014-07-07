@@ -109,9 +109,11 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 	private static final String[] FILE_EXTENSIONS = {"xml", "html"};
 	
 	public static final String ALL_TAGS_WRITER_NAME = "<All Tags>";
+	public static final String ALL_TAGS_WITH_ID_WRITER_NAME = "<All Tags, with IDs>";
 	public static final String SELECTION_WRITER_NAME = "<Current Selection>";
+	public static final String SELECTION_WITH_ID_WRITER_NAME = "<Current Selection, with IDs>";
 	
-	private static final String[] FIX_DOCUMENT_WRITER_NAMES = {ALL_TAGS_WRITER_NAME, SELECTION_WRITER_NAME};
+	private static final String[] FIX_DOCUMENT_WRITER_NAMES = {ALL_TAGS_WRITER_NAME, ALL_TAGS_WITH_ID_WRITER_NAME, SELECTION_WRITER_NAME, SELECTION_WITH_ID_WRITER_NAME};
 	
 	private JFileChooser fileChooser = null;
 	
@@ -162,12 +164,12 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.GoldenGatePlugin#getSettingsPanel()
 	 */
 	public SettingsPanel getSettingsPanel() {
-		return new DWSP();
+		return new DocumentWriterSettingsPanel();
 	}
 	
-	private class DWSP extends SettingsPanel {
+	private class DocumentWriterSettingsPanel extends SettingsPanel {
 		private DocumentWriterEditorPanel editor;
-		DWSP() {
+		DocumentWriterSettingsPanel() {
 			super("Document Writers", "Tag filters for writing SGML formatted documents.");
 			
 			this.setLayout(new BorderLayout());
@@ -252,7 +254,7 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 							parent.notifyResourcesChanged(DocumentWriterManager.class.getName());
 						}
 						catch (IOException ioe) {
-							if (JOptionPane.showConfirmDialog(DWSP.this, (ioe.getClass().getName() + " (" + ioe.getMessage() + ")\nwhile saving file to " + editor.documentWriterName + "\nProceed?"), "Could Not Save DocumentWriter", JOptionPane.YES_NO_OPTION) == JOptionPane.NO_OPTION) {
+							if (JOptionPane.showConfirmDialog(DocumentWriterSettingsPanel.this, (ioe.getClass().getName() + " (" + ioe.getMessage() + ")\nwhile saving file to " + editor.documentWriterName + "\nProceed?"), "Could Not Save DocumentWriter", JOptionPane.YES_NO_OPTION) == JOptionPane.NO_OPTION) {
 								resourceNameList.setSelectedName(editor.documentWriterName);
 								return;
 							}
@@ -464,10 +466,17 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormatProvider#getFormatForName(java.lang.String)
 	 */
 	public DocumentFormat getFormatForName(String formatName) {
-		if (ALL_TAGS_WRITER_NAME.equals(formatName)) return new AllTagsDocumentFormat();
-		if (SELECTION_WRITER_NAME.equals(formatName)) return new SelectedTagsDocumentFormat();
+		if (ALL_TAGS_WRITER_NAME.equals(formatName))
+			return new AllTagsDocumentFormat(false);
+		else if (ALL_TAGS_WITH_ID_WRITER_NAME.equals(formatName))
+			return new AllTagsDocumentFormat(true);
+		else if (SELECTION_WRITER_NAME.equals(formatName))
+			return new SelectedTagsDocumentFormat(false);
+		else if (SELECTION_WITH_ID_WRITER_NAME.equals(formatName))
+			return new SelectedTagsDocumentFormat(true);
 		Set writer = this.getDocumentWriter(formatName);
-		if (writer != null) return new FixedWriterDocumentFormat(formatName, writer);
+		if (writer != null)
+			return new FixedWriterDocumentFormat(formatName, writer);
 		else return null;
 	}
 	
@@ -490,175 +499,114 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormatProvider#getSaveFileFilters()
 	 */
 	public DocumentFormat[] getSaveFileFilters() {
-		DocumentFormat[] formats = {new AllTagsDocumentFormat(), new SelectedTagsDocumentFormat(), new DocWriterDocumentFormat()};
+		DocumentFormat[] formats = {new AllTagsDocumentFormat(false), new AllTagsDocumentFormat(true), new SelectedTagsDocumentFormat(false), new SelectedTagsDocumentFormat(true), new DocWriterDocumentFormat()};
 		return formats;
 	}
 	
 	private class AllTagsDocumentFormat extends DocumentFormat {
+		private boolean writeAnnotationIDs = false;
+		AllTagsDocumentFormat(boolean writeAnnotationIDs) {
+			this.writeAnnotationIDs = writeAnnotationIDs;
+		}
 		
-		AllTagsDocumentFormat() {}
-		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#getDefaultSaveFileExtension()
-		 */
 		public String getDefaultSaveFileExtension() {
 			return "xml";
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#loadDocument(java.io.Reader)
-		 */
 		public MutableAnnotation loadDocument(Reader source) throws IOException {
 			return null;
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
-		 */
 		public boolean isExportFormat() {
 			return false;
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(QueriableAnnotation data, Writer out) throws IOException {
 			return this.saveDocument(null, data, out);
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(DocumentEditor data, Writer out) throws IOException {
 			return this.saveDocument(data, data.getContent(), out);
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.goldenGate.DocumentEditor, de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(DocumentEditor data, QueriableAnnotation doc, Writer out) throws IOException {
-			DocumentWriterManager.writeDocument(doc, out, null);
+			DocumentWriterManager.writeDocument(doc, out, null, this.writeAnnotationIDs);
 			out.flush();
 			return true;
 		}
 		
-		/* 
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#accept(java.lang.String)
-		 */
 		public boolean accept(String fileName) {
 			return fileName.toLowerCase().endsWith(".xml");
 		}
 		
-		/*
-		 * @see javax.swing.filechooser.FileFilter#getDescription()
-		 */
 		public String getDescription() {
-			return "XML file (all tags)";
+			return (this.writeAnnotationIDs ? "XML file (all tags, with IDs)" : "XML file (all tags)");
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#equals(de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat)
-		 */
 		public boolean equals(DocumentFormat format) {
-			return ((format != null) && (format instanceof AllTagsDocumentFormat));
+			return ((format != null) && (format instanceof AllTagsDocumentFormat) && (this.writeAnnotationIDs == ((AllTagsDocumentFormat) format).writeAnnotationIDs));
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.Resource#getName()
-		 */
 		public String getName() {
-			return ALL_TAGS_WRITER_NAME;
+			return (this.writeAnnotationIDs ? ALL_TAGS_WITH_ID_WRITER_NAME : ALL_TAGS_WRITER_NAME);
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.Resource#getProviderClassName()
-		 */
 		public String getProviderClassName() {
 			return DocumentWriterManager.class.getName();
 		}
 	}
 
 	private class SelectedTagsDocumentFormat extends DocumentFormat {
+		private boolean writeAnnotationIDs = false;
+		SelectedTagsDocumentFormat(boolean writeAnnotationIDs) {
+			this.writeAnnotationIDs = writeAnnotationIDs;
+		}
 		
-		SelectedTagsDocumentFormat() {}
-		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#getDefaultSaveFileExtension()
-		 */
 		public String getDefaultSaveFileExtension() {
 			return "xml";
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
-		 */
 		public boolean isExportFormat() {
 			return true;
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#loadDocument(java.io.Reader)
-		 */
 		public MutableAnnotation loadDocument(Reader source) throws IOException {
 			return null;
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(QueriableAnnotation data, Writer out) throws IOException {
 			return this.saveDocument(null, data, out);
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(DocumentEditor data, Writer out) throws IOException {
 			return this.saveDocument(data, data.getContent(), out);
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.goldenGate.DocumentEditor, de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(DocumentEditor data, QueriableAnnotation doc, Writer out) throws IOException {
 			Set docWriter = ((data == null) ? null : data.getSelectedTags());
-			if (docWriter != null) docWriter.add("br");
-			DocumentWriterManager.writeDocument(doc, out, docWriter);
+			if (docWriter != null)
+				docWriter.add("br");
+			DocumentWriterManager.writeDocument(doc, out, docWriter, this.writeAnnotationIDs);
 			out.flush();
 			return true;
 		}
 		
-		/* 
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#accept(java.lang.String)
-		 */
 		public boolean accept(String fileName) {
 			return fileName.toLowerCase().endsWith(".xml");
 		}
 		
-		/*
-		 * @see javax.swing.filechooser.FileFilter#getDescription()
-		 */
 		public String getDescription() {
-			return "XML file (selected tags)";
+			return (this.writeAnnotationIDs ? "XML file (selected tags, with IDs)" : "XML file (selected tags)");
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#equals(de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat)
-		 */
 		public boolean equals(DocumentFormat format) {
-			return ((format != null) && (format instanceof SelectedTagsDocumentFormat));
+			return ((format != null) && (format instanceof SelectedTagsDocumentFormat) && (this.writeAnnotationIDs == ((SelectedTagsDocumentFormat) format).writeAnnotationIDs));
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.Resource#getName()
-		 */
 		public String getName() {
-			return SELECTION_WRITER_NAME;
+			return (this.writeAnnotationIDs ? SELECTION_WITH_ID_WRITER_NAME : SELECTION_WRITER_NAME);
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.Resource#getProviderClassName()
-		 */
 		public String getProviderClassName() {
 			return DocumentWriterManager.class.getName();
 		}
@@ -671,44 +619,26 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 		
 		DocWriterDocumentFormat() {}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#getDefaultSaveFileExtension()
-		 */
 		public String getDefaultSaveFileExtension() {
 			return "xml";
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
-		 */
 		public boolean isExportFormat() {
 			return true;
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#loadDocument(java.io.Reader)
-		 */
 		public MutableAnnotation loadDocument(Reader source) throws IOException {
 			return null;
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(QueriableAnnotation data, Writer out) throws IOException {
 			return this.saveDocument(null, data, out);
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(DocumentEditor data, Writer out) throws IOException {
 			return this.saveDocument(data, data.getContent(), out);
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.goldenGate.DocumentEditor, de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(DocumentEditor data, QueriableAnnotation doc, Writer out) throws IOException {
 			if (this.docWriter == null) {
 				ResourceDialog rd = ResourceDialog.getResourceDialog(getSaveFormatNames(), "Select Document Writer", "Select");
@@ -718,46 +648,34 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 					this.docWriter = getDocumentWriter(this.name);
 				}
 			}
-			DocumentWriterManager.writeDocument(doc, out, this.docWriter);
+			DocumentWriterManager.writeDocument(doc, out, this.docWriter, false);
 			out.flush();
 			return true;
 		}
 		
-		/* 
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#accept(java.lang.String)
-		 */
 		public boolean accept(String fileName) {
 			return fileName.toLowerCase().endsWith(".xml");
 		}
 		
-		/*
-		 * @see javax.swing.filechooser.FileFilter#getDescription()
-		 */
 		public String getDescription() {
 			return "XML file (custom writer)";
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#equals(de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat)
-		 */
 		public boolean equals(DocumentFormat format) {
-			if (format == null) return false;
-			if (!(format instanceof DocWriterDocumentFormat)) return false;
+			if (format == null)
+				return false;
+			if (!(format instanceof DocWriterDocumentFormat))
+				return false;
 			DocWriterDocumentFormat dwdf = ((DocWriterDocumentFormat) format);
-			if (this.name == null) return true;	//	allow an undetermined instance to be pre-selected if the previous selection was another instance that has been determined in the meantime 
+			if (this.name == null)
+				return true; // allow an undetermined instance to be pre-selected if the previous selection was another instance that has been determined in the meantime 
 			else return this.name.equals(dwdf.name);
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.Resource#getName()
-		 */
 		public String getName() {
 			return this.name;
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.Resource#getProviderClassName()
-		 */
 		public String getProviderClassName() {
 			return DocumentWriterManager.class.getName();
 		}
@@ -773,92 +691,62 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 			this.docWriter = docWriter;
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#getDefaultSaveFileExtension()
-		 */
 		public String getDefaultSaveFileExtension() {
 			return "xml";
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#isExportFormat()
-		 */
 		public boolean isExportFormat() {
 			return true;
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#loadDocument(java.io.Reader)
-		 */
 		public MutableAnnotation loadDocument(Reader source) throws IOException {
 			return null;
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(QueriableAnnotation data, Writer out) throws IOException {
 			return this.saveDocument(null, data, out);
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(DocumentEditor data, Writer out) throws IOException {
 			return this.saveDocument(data, data.getContent(), out);
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#saveDocument(de.goldenGate.DocumentEditor, de.uka.ipd.idaho.gamta.QueriableAnnotation, java.io.Writer)
-		 */
 		public boolean saveDocument(DocumentEditor data, QueriableAnnotation doc, Writer out) throws IOException {
-			DocumentWriterManager.writeDocument(doc, out, this.docWriter);
+			DocumentWriterManager.writeDocument(doc, out, this.docWriter, false);
 			out.flush();
 			return true;
 		}
 		
-		/* 
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#accept(java.lang.String)
-		 */
 		public boolean accept(String fileName) {
 			return fileName.toLowerCase().endsWith(".xml");
 		}
 		
-		/*
-		 * @see javax.swing.filechooser.FileFilter#getDescription()
-		 */
 		public String getDescription() {
 			return "XML file (" + this.name + ")";
 		}
 		
-		/*
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat#equals(de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat)
-		 */
 		public boolean equals(DocumentFormat format) {
-			if (format == null) return false;
-			if (!(format instanceof FixedWriterDocumentFormat)) return false;
+			if (format == null)
+				return false;
+			if (!(format instanceof FixedWriterDocumentFormat))
+				return false;
 			FixedWriterDocumentFormat fwdf = ((FixedWriterDocumentFormat) format);
-			if (this.name == null) return (fwdf.name == null);
+			if (this.name == null)
+				return (fwdf.name == null);
 			else return this.name.equals(fwdf.name);
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.Resource#getName()
-		 */
 		public String getName() {
 			return this.name;
 		}
 		
-		/* (non-Javadoc)
-		 * @see de.uka.ipd.idaho.goldenGate.plugins.Resource#getProviderClassName()
-		 */
 		public String getProviderClassName() {
 			return DocumentWriterManager.class.getName();
 		}
 	}
 	
 	/* retrieve a plain documentWriter by its name
-	 * @param	name	the name of the reqired documentWriter
+	 * @param	name	the name of the required documentWriter
 	 * @return the documentWriter with the required name, or null, if there is no such documentWriter
 	 */
 	private Set getDocumentWriter(String name) {
@@ -881,10 +769,6 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 		private Set cacheSet = new HashSet();
 		private Set negCacheSet = new HashSet();
 		
-//		TagFilterSet() {
-//			this(null);
-//		}
-//		
 		TagFilterSet(StringVector tags) {
 			if (tags != null) {
 				this.tags = new StringVector();
@@ -952,28 +836,16 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 			}
 		}
 		
-		/*
-		 * @see java.util.Set#add(java.lang.Object)
-		 */
 		public boolean add(Object o) {
 			return false;
 		}
 		
-		/*
-		 * @see java.util.Set#addAll(java.util.Collection)
-		 */
 		public boolean addAll(Collection c) {
 			return false;
 		}
 		
-		/*
-		 * @see java.util.Set#clear()
-		 */
 		public void clear() {}
 		
-		/*
-		 * @see java.util.Set#contains(java.lang.Object)
-		 */
 		public boolean contains(Object o) {
 			
 			//	check arguments
@@ -1008,9 +880,6 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 			return false;
 		}
 		
-		/*
-		 * @see java.util.Set#containsAll(java.util.Collection)
-		 */
 		public boolean containsAll(Collection c) {
 			if (c == null) return true;
 			Iterator i = c.iterator();
@@ -1019,70 +888,37 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 			return true;
 		}
 		
-		/*
-		 * @see java.util.Set#isEmpty()
-		 */
 		public boolean isEmpty() {
 			return ((this.tags == null) ? true : (this.tags.size() == 0));
 		}
 		
-		/*
-		 * @see java.util.Set#iterator()
-		 */
 		public Iterator iterator() {
 			return null;
 		}
 		
-		/*
-		 * @see java.util.Set#remove(java.lang.Object)
-		 */
 		public boolean remove(Object o) {
 			return false;
 		}
 		
-		/*
-		 * @see java.util.Set#removeAll(java.util.Collection)
-		 */
 		public boolean removeAll(Collection c) {
 			return false;
 		}
 		
-		/*
-		 * @see java.util.Set#retainAll(java.util.Collection)
-		 */
 		public boolean retainAll(Collection c) {
 			return false;
 		}
 		
-		/*
-		 * @see java.util.Set#size()
-		 */
 		public int size() {
 			return ((this.tags == null) ? 0 : this.tags.size());
 		}
 		
-		/*
-		 * @see java.util.Set#toArray(java.lang.Object[])
-		 */
 		public Object[] toArray(Object[] t) {
 			return null;
 		}
 		
-		/*
-		 * @see java.util.Set#toArray()
-		 */
 		public Object[] toArray() {
 			return ((this.tags == null) ? new String[0] : this.tags.toStringArray());
 		}
-//		
-//		/*
-//		 * @see java.util.Set#toArray(java.lang.Object[])
-//		 */
-//		public String[] toArray(String[] o) {
-//			String[] array = ((this.tags == null) ? new String[0] : this.tags.toStringArray());
-//			System.arraycopy(array, 0, o, 0, Math.min(o.length, array.length));
-//			return null;
-//		}
 	}
 	
 	private StringVector readDocumentWriter(String name) {
@@ -1120,9 +956,12 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 		else return false;
 	}
 	
-	private static void writeDocument(QueriableAnnotation data, Writer output, Set annotationTypes) throws IOException {
-		
+	private static void writeDocument(QueriableAnnotation data, Writer output, Set annotationTypes, boolean writeAnnotationIDs) throws IOException {
 		BufferedWriter buf = new BufferedWriter(output);
+		
+		//	write XML declaration (output stream will correct encoding name on the fly if it's not UTF-8)
+		buf.write("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+		buf.newLine();
 		
 		//	get Annotations
 		Annotation[] nestedAnnotations = data.getAnnotations();
@@ -1138,10 +977,10 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 		
 		//	make sure there is a root element
 		if ((nestedAnnotations.length == 0) || (nestedAnnotations[0].size() < data.size())) {
-			Annotation[] na = new Annotation[nestedAnnotations.length + 1];
-			na[0] = data;
-			System.arraycopy(nestedAnnotations, 0, na, 1, nestedAnnotations.length);
-			nestedAnnotations = na;
+			Annotation[] newNestedAnnotations = new Annotation[nestedAnnotations.length + 1];
+			newNestedAnnotations[0] = data;
+			System.arraycopy(nestedAnnotations, 0, newNestedAnnotations, 1, nestedAnnotations.length);
+			nestedAnnotations = newNestedAnnotations;
 		}
 		
 		Stack stack = new Stack();
@@ -1199,8 +1038,7 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 				if (!lastWasLineBreak) buf.newLine();
 				
 				//	add start tag
-//				buf.write(AnnotationUtils.produceStartTag(annotation, null, true));
-				buf.write(AnnotationUtils.produceStartTag(annotation));
+				buf.write(AnnotationUtils.produceStartTag(annotation, writeAnnotationIDs));
 				lastWasTag = true;
 				lastWasLineBreak = false;
 				
@@ -1214,7 +1052,6 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 			
 			//	append current Token
 			String tokenValue = token.getValue();
-//			buf.write(encodeToken(tokenValue));
 			buf.write(AnnotationUtils.escapeForXml(tokenValue));
 			lastWasTag = false;
 			lastWasLineBreak = false;
@@ -1223,25 +1060,14 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 		//	write end tags for Annotations not closed so far
 		while (stack.size() > 0) {
 			Annotation annotation = ((Annotation) stack.pop());
-			if (!lastWasLineBreak) buf.newLine();
+			if (!lastWasLineBreak)
+				buf.newLine();
 			buf.write("</" + ((annotation.getType() == null) ? "annotation" : annotation.getType()) + ">");
 			lastWasLineBreak = false;
 		}
 		buf.flush();
 	}
 	
-//	private static String encodeToken(String token) {
-//		StringBuffer newTokenAssembler = new StringBuffer();
-//		for (int c = 0; c < token.length(); c++) {
-//			String tokenPart = token.substring(c, (c + 1));
-//			if ("<".equals(tokenPart)) newTokenAssembler.append("&lt;");
-//			else if (">".equals(tokenPart)) newTokenAssembler.append("&gt;");
-//			else if ("&".equals(tokenPart)) newTokenAssembler.append("&amp;");
-//			else newTokenAssembler.append(tokenPart);
-//		}
-//		return newTokenAssembler.toString();
-//	}
-//	
 	private class CreateDocumentWriterDialog extends DialogPanel {
 		
 		private JTextField nameField;

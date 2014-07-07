@@ -53,6 +53,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.io.StringReader;
 import java.io.Writer;
 import java.util.Collections;
@@ -87,6 +88,7 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
+import de.uka.ipd.idaho.easyIO.settings.Settings;
 import de.uka.ipd.idaho.gamta.Annotation;
 import de.uka.ipd.idaho.gamta.QueriableAnnotation;
 import de.uka.ipd.idaho.gamta.util.feedback.FeedbackPanel;
@@ -119,18 +121,22 @@ import de.uka.ipd.idaho.stringUtils.StringVector;
  */
 public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements FeedbackService {
 	
-	private static final int defaultMaxDialogWidth = 700;
+	private static final int minDialogWidth = 650;
+	private static final int minDialogHeight = 400;
+	private static final int defaultMaxDialogWidth = 900;
 	private static final int defaultMaxDialogHeight = 700;
+	
+	private float zoomFactor = 1;
 	
 	private static final String noFlag = "<Do not flag>";
 	
 	private int maxDialogWidth;
 	private int maxDialogHeight;
 	
-	private StringVector flagList = new StringVector();;
+	private StringVector flagList = new StringVector();
 	private TreeSet flagSet = new TreeSet();
 	
-	private Properties annotationFlags = new Properties();
+	private Properties annotationIDsToFlags = new Properties();
 	
 	private FlaggedAnnotationViewer fav;
 	
@@ -168,11 +174,19 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 		this.parent.registerAnnotationObserver(new AnnotationObserver() {
 			public void annotationAdded(QueriableAnnotation doc, Annotation annotation, Resource source) {}
 			public void annotationRemoved(QueriableAnnotation doc, Annotation annotation, Resource source) {
-				annotationFlags.remove(annotation.getAnnotationID());
+				annotationIDsToFlags.remove(annotation.getAnnotationID());
 			}
 			public void annotationTypeChanged(QueriableAnnotation doc, Annotation annotation, String oldType, Resource source) {}
 			public void annotationAttributeChanged(QueriableAnnotation doc, Annotation annotation, String attributeName, Object oldValue, Resource source) {}
 		});
+		
+		//	load zoom from config file
+		try {
+			Reader setIn = new InputStreamReader(this.dataProvider.getInputStream("config.cnfg"), "UTF-8");
+			Settings set = Settings.loadSettings(setIn);
+			setIn.close();
+			this.zoomFactor = Float.parseFloat(set.getSetting("zoom", "1"));
+		} catch (Exception e) {}
 		
 		//	register feedback service
 		FeedbackPanel.addFeedbackService(this);
@@ -188,18 +202,18 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 	}
 	
 	String[] getFlags() {
-		String[] flags = new String[this.flagSet.size() + 1];
-		flags[0] = "";
-		int fi = 1;
-		for (Iterator fit = this.flagSet.iterator(); fit.hasNext();)
-			flags[fi++] = ((String) fit.next());
-		return flags;
+		return ((String[]) this.flagSet.toArray(new String[this.flagSet.size()]));
 	}
 	String getFlag(String annotationId) {
-		return this.annotationFlags.getProperty(annotationId);
+		if (DEBUG) {
+			String flag = this.annotationIDsToFlags.getProperty(annotationId);
+			System.out.println("Getting flag for " + annotationId + " ==> " + flag);
+			return flag;
+		}
+		else return this.annotationIDsToFlags.getProperty(annotationId);
 	}
 	void removeFlag(String annotationId) {
-		this.annotationFlags.remove(annotationId);
+		this.annotationIDsToFlags.remove(annotationId);
 	}
 	
 	/* (non-Javadoc)
@@ -213,7 +227,19 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.AbstractGoldenGatePlugin#exit()
 	 */
 	public void exit() {
+		
+		//	un-register feedback service
 		FeedbackPanel.removeFeedbackService(this);
+		
+		//	store zoom in config file
+		if (this.dataProvider.isDataEditable("config.cnfg")) try {
+			Settings set = new Settings();
+			set.setSetting("zoom", ("" + this.zoomFactor));
+			Writer setOut = new OutputStreamWriter(this.dataProvider.getOutputStream("config.cnfg"), "UTF-8");
+			set.storeAsText(setOut);
+			setOut.flush();
+			setOut.close();
+		} catch (IOException ioe) {}
 	}
 	
 	/* (non-Javadoc)
@@ -262,14 +288,13 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 	private Map typeDimensions = Collections.synchronizedMap(new HashMap());
 	
 	private ZoomPanel zoomPanel = null;
+	private static Dimension zoomButtonSize = new Dimension(21, 21);
 	
 	private boolean showFullExplanation = true;
 	
-	private static class ZoomPanel extends JPanel {
-		private float zoomFactor = 1;
+	private class ZoomPanel extends JPanel {
 		private JLabel zoomFactorLabel = new JLabel("1", JLabel.CENTER);
 		
-		private static Dimension buttonSize = new Dimension(21, 21);
 		private JButton larger = new JButton("<HTML><B>+</B></HTML>");
 		private JButton smaller = new JButton("<HTML><B>-</B></HTML>");
 		
@@ -283,7 +308,7 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 			super(new BorderLayout(), true);
 			
 			this.larger.setBorder(BorderFactory.createRaisedBevelBorder());
-			this.larger.setPreferredSize(buttonSize);
+			this.larger.setPreferredSize(zoomButtonSize);
 			this.larger.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent ae) {
 					larger();
@@ -291,7 +316,7 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 			});
 			
 			this.smaller.setBorder(BorderFactory.createRaisedBevelBorder());
-			this.smaller.setPreferredSize(buttonSize);
+			this.smaller.setPreferredSize(zoomButtonSize);
 			this.smaller.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent ae) {
 					smaller();
@@ -318,10 +343,10 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 		void larger() {
 			
 			//	adjust zoom factor
-			this.zoomFactor += 0.25f;
+			zoomFactor += 0.25f;
 			
 			//	adjust buttons
-			if (this.zoomFactor >= 4)
+			if (zoomFactor >= 4)
 				this.larger.setEnabled(false);
 			this.smaller.setEnabled(true);
 			
@@ -332,10 +357,10 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 		void smaller() {
 			
 			//	adjust zoom factor
-			this.zoomFactor -= 0.25f;
+			zoomFactor -= 0.25f;
 			
 			//	adjust buttons
-			if (this.zoomFactor <= 0.5)
+			if (zoomFactor <= 0.5)
 				this.smaller.setEnabled(false);
 			this.larger.setEnabled(true);
 			
@@ -350,14 +375,14 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 				this.refreshRegisters();
 			
 			//	adjust zoom display
-			this.zoomFactorLabel.setText("" + this.zoomFactor);
+			this.zoomFactorLabel.setText("" + zoomFactor);
 			
 			//	adjust labels based on current zoom factor
 			for (Iterator cit = this.componentFonts.keySet().iterator(); cit.hasNext();) {
 				JComponent comp = ((JComponent) cit.next());
 				Font font = ((Font) this.componentFonts.get(comp));
 				if (font != null)
-					setComponentFont(comp, font.deriveFont(this.zoomFactor * font.getSize()));
+					this.setComponentFont(comp, font.deriveFont(zoomFactor * font.getSize()));
 			}
 			
 			//	re-layout panels
@@ -432,7 +457,7 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 			for (Iterator cit = fontedComponents.iterator(); cit.hasNext();) {
 				JComponent comp = ((JComponent) cit.next());
 				if (!this.componentFonts.containsKey(comp)) {
-					Font font = getComponentFont(comp);
+					Font font = this.getComponentFont(comp);
 					this.componentFonts.put(comp, font);
 				}
 			}
@@ -463,7 +488,7 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 				JComponent comp = ((JComponent) cit.next());
 				Font font = ((Font) this.componentFonts.get(comp));
 				if (font != null)
-					setComponentFont(comp, font);
+					this.setComponentFont(comp, font);
 			}
 			
 			//	remove container listeners
@@ -481,7 +506,7 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 			this.containerListeners.clear();
 		}
 		
-		private static Font getComponentFont(JComponent comp) {
+		private Font getComponentFont(JComponent comp) {
 			if (comp instanceof JTextPane) {
 				StyledDocument sd = ((JTextPane) comp).getStyledDocument();
 				Element e = sd.getCharacterElement(0);
@@ -497,7 +522,7 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 			return comp.getFont();
 		}
 		
-		private static void setComponentFont(JComponent comp, Font font) {
+		private void setComponentFont(JComponent comp, Font font) {
 			if (comp instanceof JTextPane) {
 				StyledDocument sd = ((JTextPane) comp).getStyledDocument();
 				SimpleAttributeSet as = new SimpleAttributeSet();
@@ -596,7 +621,9 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 		if (DEBUG) System.out.println("  - zoom panel produced");
 		
 		//	initialize flagging
+		if (DEBUG) System.out.println("  - preparing flagging");
 		final String feedbackAnnotationId = fp.getProperty(FeedbackPanel.TARGET_ANNOTATION_ID_PROPERTY);
+		if (DEBUG) System.out.println("    - annotation ID is " + feedbackAnnotationId);
 		String feedbackAnnotationType = fp.getProperty(FeedbackPanel.TARGET_ANNOTATION_TYPE_PROPERTY);
 		String flagLabel = ((feedbackAnnotationType == null) ? "" : (" " + feedbackAnnotationType.substring(0, 1).toUpperCase() + feedbackAnnotationType.substring(1)));
 		String flagTooltip = ("Flag the content of this feedback dialog " + (flagSet.isEmpty() ? "for further inspection" : "for one of the available reasons"));
@@ -611,22 +638,24 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 			detailFlagPanel = null;
 		}
 		else if (this.flagSet.isEmpty()) {
-			simpleFlag = new JCheckBox(("Flag" + flagLabel), (this.annotationFlags.containsKey(feedbackAnnotationId)));
+			if (DEBUG) System.out.println("    - got no custom flags, using checkbox");
+			simpleFlag = new JCheckBox(("Flag" + flagLabel), (this.annotationIDsToFlags.containsKey(feedbackAnnotationId)));
 			simpleFlag.setToolTipText(flagTooltip);
 			detailFlagLabel = null;
 			detailFlagSelector = null;
 			detailFlagPanel = null;
 		}
 		else {
+			if (DEBUG) System.out.println("    - got " + this.flagSet.size() + " custom flags, using dropdown");
 			simpleFlag = null;
-			detailFlagLabel = new JLabel("Flag" + flagLabel + " as ");
+			detailFlagLabel = new JLabel("<HTML><B>Flag" + flagLabel + " as</B></HTML>");
 			detailFlagLabel.setToolTipText(flagTooltip);
 			detailFlagSelector = new JComboBox((String[]) this.flagSet.toArray(new String[this.flagSet.size()]));
 			detailFlagSelector.insertItemAt(noFlag, 0);
-			detailFlagSelector.setSelectedItem(this.annotationFlags.getProperty(feedbackAnnotationId, noFlag));
+			detailFlagSelector.setSelectedItem(this.annotationIDsToFlags.getProperty(feedbackAnnotationId, noFlag));
 			detailFlagPanel = new JPanel(new BorderLayout(), true);
-			detailFlagPanel.add(detailFlagLabel, BorderLayout.WEST);
-			detailFlagPanel.add(detailFlagSelector, BorderLayout.CENTER);
+			detailFlagPanel.add(detailFlagLabel, BorderLayout.CENTER);
+			detailFlagPanel.add(detailFlagSelector, BorderLayout.SOUTH);
 		}
 		if (DEBUG) System.out.println("  - flagging prepared");
 		
@@ -641,15 +670,25 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 					if (error == null) {
 						fp.setStatusCode("OK");
 						if (simpleFlag != null) {
-							if (simpleFlag.isSelected())
-								annotationFlags.setProperty(feedbackAnnotationId, "");
-							else annotationFlags.remove(feedbackAnnotationId);
+							if (simpleFlag.isSelected()) {
+								annotationIDsToFlags.setProperty(feedbackAnnotationId, "");
+								if (DEBUG) System.out.println("  - flagged");
+							}
+							else {
+								annotationIDsToFlags.remove(feedbackAnnotationId);
+								if (DEBUG) System.out.println("  - un-flagged");
+							}
 						}
 						else if (detailFlagSelector != null) {
 							String flag = ((String) detailFlagSelector.getSelectedItem());
-							if ((flag != null) && !noFlag.equals(flag))
-								annotationFlags.setProperty(feedbackAnnotationId, flag);
-							else annotationFlags.remove(feedbackAnnotationId);
+							if ((flag != null) && !noFlag.equals(flag)) {
+								annotationIDsToFlags.setProperty(feedbackAnnotationId, flag);
+								if (DEBUG) System.out.println("  - flagged as " + flag);
+							}
+							else {
+								annotationIDsToFlags.remove(feedbackAnnotationId);
+								if (DEBUG) System.out.println("  - un-flagged");
+							}
 						}
 						dialog.dispose();
 					}
@@ -667,15 +706,25 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 					if (error == null) {
 						fp.setStatusCode(buttonLabel);
 						if (simpleFlag != null) {
-							if (simpleFlag.isSelected())
-								annotationFlags.setProperty(feedbackAnnotationId, "");
-							else annotationFlags.remove(feedbackAnnotationId);
+							if (simpleFlag.isSelected()) {
+								annotationIDsToFlags.setProperty(feedbackAnnotationId, "");
+								if (DEBUG) System.out.println("  - flagged");
+							}
+							else {
+								annotationIDsToFlags.remove(feedbackAnnotationId);
+								if (DEBUG) System.out.println("  - un-flagged");
+							}
 						}
 						else if (detailFlagSelector != null) {
 							String flag = ((String) detailFlagSelector.getSelectedItem());
-							if ((flag != null) && !noFlag.equals(flag))
-								annotationFlags.setProperty(feedbackAnnotationId, flag);
-							else annotationFlags.remove(feedbackAnnotationId);
+							if ((flag != null) && !noFlag.equals(flag)) {
+								annotationIDsToFlags.setProperty(feedbackAnnotationId, flag);
+								if (DEBUG) System.out.println("  - flagged as " + flag);
+							}
+							else {
+								annotationIDsToFlags.remove(feedbackAnnotationId);
+								if (DEBUG) System.out.println("  - un-flagged");
+							}
 						}
 						dialog.dispose();
 					}
@@ -703,7 +752,8 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 		JPanel functionPanel = new JPanel(new BorderLayout(), true);
 		if (simpleFlag != null)
 			functionPanel.add(simpleFlag, BorderLayout.WEST);
-		else functionPanel.add(detailFlagPanel, BorderLayout.WEST);
+		else if (detailFlagPanel != null)
+			functionPanel.add(detailFlagPanel, BorderLayout.WEST);
 		functionPanel.add(buttonPanel, BorderLayout.CENTER);
 		functionPanel.add(this.zoomPanel, BorderLayout.EAST);
 		dialog.getContentPane().add(functionPanel, BorderLayout.SOUTH);
@@ -772,7 +822,9 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 			//	adjust size
 			width = Math.min(width + 50, maxWidth); // add for scroll bar
 			height = Math.min(height, maxHeight);
-			if (DEBUG) System.out.println("  - dialog content produced");
+			width = Math.max(width, minDialogWidth);
+			height = Math.max(height, minDialogHeight);
+			if (DEBUG) System.out.println("  - dialog content produced, size is " + width + " x " + height);
 			
 			//	set dialog size
 			dialog.pack();
@@ -868,7 +920,7 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 		label.setBackground(Color.WHITE);
 		label.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.WHITE, 2), BorderFactory.createLineBorder(Color.RED, 1)), BorderFactory.createLineBorder(Color.WHITE, 5)));
 		Font labelFont = label.getFont();
-		label.setFont(labelFont.deriveFont(this.zoomPanel.zoomFactor * labelFont.getSize()));
+		label.setFont(labelFont.deriveFont(zoomFactor * labelFont.getSize()));
 		errorDialog.getContentPane().add(label, BorderLayout.NORTH);
 		
 		//	build message
@@ -891,7 +943,7 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 		errorLabel.setBackground(Color.WHITE);
 		errorLabel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.WHITE, 2), BorderFactory.createLineBorder(Color.RED, 1)), BorderFactory.createLineBorder(Color.WHITE, 5)));
 		Font errorLabelFont = errorLabel.getFont();
-		errorLabel.setFont(errorLabelFont.deriveFont(this.zoomPanel.zoomFactor * errorLabelFont.getSize()));
+		errorLabel.setFont(errorLabelFont.deriveFont(zoomFactor * errorLabelFont.getSize()));
 		errorDialog.getContentPane().add(errorLabel, BorderLayout.CENTER);
 		
 		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -902,7 +954,7 @@ public class FlaggingFeedbackService extends AbstractGoldenGatePlugin implements
 			}
 		});
 		Font buttonFont = button.getFont();
-		button.setFont(buttonFont.deriveFont(this.zoomPanel.zoomFactor * buttonFont.getSize()));
+		button.setFont(buttonFont.deriveFont(zoomFactor * buttonFont.getSize()));
 		buttonPanel.add(button);
 		errorDialog.getContentPane().add(buttonPanel, BorderLayout.SOUTH);
 		if (DEBUG) System.out.println("  - buttons produced");

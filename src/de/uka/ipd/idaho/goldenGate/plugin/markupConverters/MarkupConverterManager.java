@@ -91,6 +91,7 @@ import de.uka.ipd.idaho.goldenGate.plugins.AnnotationFilter;
 import de.uka.ipd.idaho.goldenGate.plugins.AnnotationFilterManager;
 import de.uka.ipd.idaho.goldenGate.plugins.DocumentProcessor;
 import de.uka.ipd.idaho.goldenGate.plugins.Resource;
+import de.uka.ipd.idaho.goldenGate.plugins.ResourceSplashScreen;
 import de.uka.ipd.idaho.goldenGate.util.AnnotationTools;
 import de.uka.ipd.idaho.goldenGate.util.DataListListener;
 import de.uka.ipd.idaho.goldenGate.util.DialogPanel;
@@ -99,21 +100,21 @@ import de.uka.ipd.idaho.stringUtils.StringVector;
 import de.uka.ipd.idaho.stringUtils.accessories.StringSelector;
 
 /**
- * Manager for markup convertes. A markup converter is essentially a set of
+ * Manager for markup converters. A markup converter is essentially a set of
  * mappings from a source annotation type or attribute name to a target type or
  * name. In addition, the source types can be specified in GPath.<br>
  * <br>
  * Running a markup converter applies the mappings in top-down order. The main
- * purpose is renaming, but some special mappping target values also allow for
+ * purpose is renaming, but some special mapping target values also allow for
  * removing or deleting annotations and attributes. Markup converters are
- * especially useful for cleaning up unnecessary markup, e.g. inline layout filters
+ * especially useful for cleaning up unnecessary markup, e.g. in-line layout filters
  * from an HTML document that is about to be transformed into a semantically
  * annotated XML document.<br>
  * <br>
  * All configuration can be done in the 'Edit Markup Converters' dialog in the
  * GoldenGATE Editor.<br>
  * <br>
- * In addition to providing markup converters as resources, this plugin also
+ * In addition to providing markup converters as resources, this plug-in also
  * adds a set of function items to the Tools menu, which provide functionality
  * to manipulate markup in an ad-hoc fashion, with the same functionality as
  * offered by markup converters stored as resources.
@@ -736,7 +737,7 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 	}
 
 	/* retrieve a MarkupConverter by its name
-	 * @param	name	the name of the reqired MarkupConverter
+	 * @param	name	the name of the required MarkupConverter
 	 * @return the MarkupConverter with the required name, or null, if there is no such MarkupConverter
 	 */
 	private DocumentProcessor getMarkupConverter(String name) {
@@ -770,7 +771,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 					String type = typeSelector.getSelectedString();
 					String cloneType = newTypeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter(type, false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, (MarkupConverter.CLONE_CONVERSION + cloneType), ("Clone " + type + " as " + cloneType)), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Cloning Annotations", ("Cloning " + type + " as " + cloneType));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, (MarkupConverter.CLONE_CONVERSION + cloneType), ("Clone " + type + " as " + cloneType)), splashScreen, parameters);
 				}
 			}
 			
@@ -793,7 +795,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 					String type = typeSelector.getSelectedString();
 					String newType = newTypeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter(type, false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, newType, ("Rename " + type + " to " + newType)), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Renaming Annotations", ("Renaming " + type + " to " + newType));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, newType, ("Rename " + type + " to " + newType)), splashScreen, parameters);
 				}
 			}
 			
@@ -815,7 +818,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 					String type = typeSelector.getSelectedString();
 					if (ALL_ANNOTATIONS_TYPE.equals(type)) type = "*";
 					McAnnotationFilter filter = this.getAnnotationFilter(type, false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove " + type)), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Removing Annotations", ("Removing " + type + " annotations"));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove " + type)), splashScreen, parameters);
 				}
 			}
 			
@@ -837,7 +841,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 					String type = typeSelector.getSelectedString();
 					if (ALL_ANNOTATIONS_TYPE.equals(type)) type = "*";
 					McAnnotationFilter filter = this.getAnnotationFilter(type, false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, MarkupConverter.REMOVE_DUPLICATES_CONVERSION, ("Remove duplicate " + type + "s")), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Removing Duplicate Annotations", ("Removing duplicate " + type + " annotations"));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, MarkupConverter.REMOVE_DUPLICATES_CONVERSION, ("Remove duplicate " + type + "s")), splashScreen, parameters);
 				}
 			}
 			
@@ -853,7 +858,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 				if (mcd.wasCommitted()) {
 					String type = typeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter((type + "/" + type), false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove self-nested " + type + "s")), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Removing Self-Nested Annotations", ("Removing " + type + " annotations nested in others"));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove self-nested " + type + "s")), splashScreen, parameters);
 				}
 			}
 			
@@ -869,7 +875,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 				if (mcd.wasCommitted()) {
 					String type = typeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter((type + "[./" + type + "]"), false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove self-containing " + type + "s")), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Removing Self-Containing Annotations", ("Removing " + type + " annotations containing others"));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove self-containing " + type + "s")), splashScreen, parameters);
 				}
 			}
 			
@@ -887,7 +894,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 					String outerType = outerTypeSelector.getSelectedString();
 					String innerType = innerTypeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter((outerType + "/" + innerType), false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove " + innerType + " nested in " + outerType)), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Removing Nested Annotations", ("Removing " + innerType + " annotations nested in " + outerType));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove " + innerType + " nested in " + outerType)), splashScreen, parameters);
 				}
 			}
 			
@@ -905,7 +913,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 					String outerType = outerTypeSelector.getSelectedString();
 					String innerType = innerTypeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter((outerType + "[./" + innerType + "]"), false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove " + outerType + " containing " + innerType)), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Removing Containing Annotations", ("Removing " + outerType + " annotations containing " + innerType));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove " + outerType + " containing " + innerType)), splashScreen, parameters);
 				}
 			}
 			
@@ -923,7 +932,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 					String outerType = outerTypeSelector.getSelectedString();
 					String innerType = innerTypeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter((innerType + "[not(./@" + Annotation.ANNOTATION_ID_ATTRIBUTE + " = " + DocumentRoot.DOCUMENT_TYPE + "/" + outerType + "/" + innerType + "/@" + Annotation.ANNOTATION_ID_ATTRIBUTE + ")]"), false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove " + innerType + " not nested in " + outerType)), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Removing Non-Nested Annotations", ("Removing " + innerType + " annotations not contained in " + outerType));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove " + innerType + " not nested in " + outerType)), splashScreen, parameters);
 				}
 			}
 			
@@ -941,7 +951,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 					String outerType = outerTypeSelector.getSelectedString();
 					String innerType = innerTypeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter((outerType + "[not(./" + innerType + ")]"), false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove " + outerType + " not containing " + innerType)), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Removing Non-Containing Annotations", ("Removing " + outerType + " annotations not containing " + innerType));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove " + outerType + " not containing " + innerType)), splashScreen, parameters);
 				}
 			}
 			
@@ -957,7 +968,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 				if (mcd.wasCommitted()) {
 					String type = typeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter(type, false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, MarkupConverter.DELETE_CONVERSION, ("Delete " + type + "s")), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Deleting Annotations", ("Deleting " + type + " annotations"));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, MarkupConverter.DELETE_CONVERSION, ("Delete " + type + "s")), splashScreen, parameters);
 				}
 			}
 			
@@ -1015,7 +1027,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 					String attribute = attributeSelector.getSelectedString();
 					String newAttribute = newAttributeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter((type + "@" + attribute), false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, newAttribute, ("Rename attribute " + attribute + " to " + newAttribute)), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Renaming Annotation Attribute", ("Renaming " + attribute + " attribute of " + type + " annotations to " + newAttribute));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, newAttribute, ("Rename attribute " + attribute + " to " + newAttribute)), splashScreen, parameters);
 				}
 			}
 			
@@ -1060,7 +1073,8 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 					String type = typeSelector.getSelectedString();
 					String attribute = attributeSelector.getSelectedString();
 					McAnnotationFilter filter = this.getAnnotationFilter((type + "@" + attribute), false);
-					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove attribute " + attribute)), null, parameters);
+					ResourceSplashScreen splashScreen = new ResourceSplashScreen("Removing Annotation Attribute", ("Removing " + attribute + " from " + type + " annotations"));
+					data.applyDocumentProcessor(new McFilterDocumentProcessor(filter, "", ("Remove attribute " + attribute)), splashScreen, parameters);
 				}
 			}
 			else super.applyDocumentProcessor(processorName, data, parameters);
@@ -1070,14 +1084,9 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 	
 	private class MarkupConversionDialog extends DialogPanel {
 		private boolean committed = false;
-//		private String confirmTitle = null;
-//		private String confirmText = null;
 		
 		MarkupConversionDialog(String title, String commitText, StringSelector[] selectors, String confirmTitle, String confirmText) {
 			super(title, true);
-			
-//			this.confirmTitle = confirmTitle;
-//			this.confirmText = confirmText;
 			
 			JPanel selectorPanel = new JPanel(new GridLayout(0, 1));
 			for (int s = 0; s < selectors.length; s++)
@@ -1088,7 +1097,6 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 			commitButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			commitButton.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent ae) {
-//					commit();
 					committed = true;
 					dispose();
 				}
@@ -1118,13 +1126,6 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 		boolean wasCommitted() {
 			return this.committed;
 		}
-//		
-//		void commit() {
-//			if (confirmTitle != null)
-//				this.committed = (JOptionPane.showConfirmDialog(this, confirmText, confirmTitle, JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION);
-//			else this.committed = true;
-//			this.dispose();
-//		}
 	}
 	
 	private class McFilterDocumentProcessor implements DocumentProcessor {

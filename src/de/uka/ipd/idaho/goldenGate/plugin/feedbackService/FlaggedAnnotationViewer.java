@@ -50,8 +50,8 @@ import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -62,27 +62,19 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.event.TableModelListener;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableModel;
 
 import de.uka.ipd.idaho.gamta.Annotation;
 import de.uka.ipd.idaho.gamta.AnnotationUtils;
-import de.uka.ipd.idaho.gamta.Gamta;
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
 import de.uka.ipd.idaho.gamta.QueriableAnnotation;
-import de.uka.ipd.idaho.gamta.Token;
-import de.uka.ipd.idaho.gamta.TokenSequence;
-import de.uka.ipd.idaho.gamta.TokenSequenceUtils;
-import de.uka.ipd.idaho.gamta.Tokenizer;
-import de.uka.ipd.idaho.gamta.defaultImplementation.PlainTokenSequence;
 import de.uka.ipd.idaho.goldenGate.DocumentEditor;
 import de.uka.ipd.idaho.goldenGate.DocumentEditorDialog;
 import de.uka.ipd.idaho.goldenGate.GoldenGATE;
 import de.uka.ipd.idaho.goldenGate.plugins.AbstractDocumentViewer;
 import de.uka.ipd.idaho.goldenGate.plugins.AnnotationFilter;
 import de.uka.ipd.idaho.goldenGate.util.DialogPanel;
-import de.uka.ipd.idaho.stringUtils.StringVector;
 
 /**
  * List view provider showing annotations that have been flagged in in some way
@@ -91,6 +83,8 @@ import de.uka.ipd.idaho.stringUtils.StringVector;
  * @author sautter
  */
 public class FlaggedAnnotationViewer extends AbstractDocumentViewer {
+	
+	private static final String ALL_FLAGS = "<All Flags>";
 	
 	private FlaggingFeedbackService ffs;
 	
@@ -130,6 +124,7 @@ public class FlaggedAnnotationViewer extends AbstractDocumentViewer {
 		private String originalTitle;
 		
 		private JComboBox flagFilterSelector = null;
+		private JCheckBox showParagraphs = new JCheckBox("Show Paragraphs", false);
 		
 		FlaggedAnnotationDialog(String title, MutableAnnotation data, DocumentEditor target) {
 			super(title, true);
@@ -148,35 +143,53 @@ public class FlaggedAnnotationViewer extends AbstractDocumentViewer {
 			this.annotationDisplay = new FlaggedAnnotationPanel(data, target);
 			
 			//	create filter selector
-			JPanel flagFilterPanel = null;
+			JPanel flagFilterPanel = new JPanel(new BorderLayout());
+			JLabel flagFilterLabel = new JLabel("Select flag to show annotations for ");
 			String[] flags = ffs.getFlags();
-			if (flags.length > 2) {
-				this.flagFilterSelector.setModel(new DefaultComboBoxModel(flags));
-				this.flagFilterSelector.setEditable(false);
-				this.flagFilterSelector.setBorder(BorderFactory.createLoweredBevelBorder());
+			if (flags.length == 0) {
+				flags = new String[1];
+				flags[0] = ALL_FLAGS;
+			}
+			this.flagFilterSelector = new JComboBox(new DefaultComboBoxModel(flags));
+			if (flags.length > 1)
+				this.flagFilterSelector.insertItemAt(ALL_FLAGS, 0);
+			this.flagFilterSelector.setSelectedIndex(0);
+			this.flagFilterSelector.setEditable(false);
+			this.flagFilterSelector.setBorder(BorderFactory.createLoweredBevelBorder());
+			if (flags.length > 1)
 				this.flagFilterSelector.addItemListener(new ItemListener() {
 					public void itemStateChanged(ItemEvent ie) {
 						applyFlagFilter();
 					}
 				});
-				flagFilterPanel = new JPanel(new BorderLayout());
-				flagFilterPanel.add(new JLabel("Select flag to show annotations for "), BorderLayout.WEST);
-				flagFilterPanel.add(this.flagFilterSelector, BorderLayout.CENTER);
-			}
+			else this.flagFilterSelector.setEnabled(false);
+			
+			//	initialize display mode selection
+			this.showParagraphs.setToolTipText("Select to list paragraphs containing flagged annotations rather than flagged annotations proper");
+			this.showParagraphs.addItemListener(new ItemListener() {
+				public void itemStateChanged(ItemEvent ie) {
+					applyFlagFilter();
+				}
+			});
+			
+			flagFilterPanel.add(flagFilterLabel, BorderLayout.WEST);
+			flagFilterPanel.add(this.flagFilterSelector, BorderLayout.CENTER);
+			flagFilterPanel.add(this.showParagraphs, BorderLayout.EAST);
 			
 			//	put the whole stuff together
-			if (flagFilterPanel != null)
-				this.add(flagFilterPanel, BorderLayout.NORTH);
+			this.add(flagFilterPanel, BorderLayout.NORTH);
 			this.add(this.annotationDisplay, BorderLayout.CENTER);
 			this.add(closeButton, BorderLayout.SOUTH);
 			
 			this.setResizable(true);
-			this.setSize(new Dimension(500, 650));
+			this.setSize(new Dimension(700, 650));
 			this.setLocationRelativeTo((target == null) ? ((Component) this.getOwner()) : ((Component) target));
+			
+			this.applyFlagFilter();
 		}
 		
 		void applyFlagFilter() {
-			final String filterFlag = this.flagFilterSelector.getSelectedItem().toString();
+			final String filterFlag = ((this.flagFilterSelector == null) ? "" : (ALL_FLAGS.equals(this.flagFilterSelector.getSelectedItem()) ? "" : this.flagFilterSelector.getSelectedItem().toString()));
 			
 			//	create filter
 			AnnotationFilter filter = new AnnotationFilter() {
@@ -184,22 +197,62 @@ public class FlaggedAnnotationViewer extends AbstractDocumentViewer {
 					return false;
 				}
 				public QueriableAnnotation[] getMatches(QueriableAnnotation data) {
-					QueriableAnnotation[] dataAnnotations = data.getAnnotations();
 					LinkedList matches = new LinkedList();
-					for (int a = 0; a < dataAnnotations.length; a++) {
-						String flag = ffs.getFlag(dataAnnotations[a].getAnnotationID());
-						if ((flag != null) && flag.startsWith(filterFlag))
-							matches.add(dataAnnotations[a]);
+					if (showParagraphs.isSelected()) {
+						QueriableAnnotation[] dataParagraphs = data.getAnnotations(MutableAnnotation.PARAGRAPH_TYPE);
+						for (int p = 0; p < dataParagraphs.length; p++) {
+							String flag = ffs.getFlag(dataParagraphs[p].getAnnotationID());
+							if ((flag != null) && flag.startsWith(filterFlag)) {
+								matches.add(dataParagraphs[p]);
+								continue;
+							}
+							QueriableAnnotation[] dataAnnotations = dataParagraphs[p].getAnnotations();
+							for (int a = 0; a < dataAnnotations.length; a++) {
+								flag = ffs.getFlag(dataAnnotations[a].getAnnotationID());
+								if ((flag != null) && flag.startsWith(filterFlag)) {
+									matches.add(dataParagraphs[p]);
+									break;
+								}
+							}
+						}
+					}
+					else {
+						QueriableAnnotation[] dataAnnotations = data.getAnnotations();
+						for (int a = 0; a < dataAnnotations.length; a++) {
+							String flag = ffs.getFlag(dataAnnotations[a].getAnnotationID());
+							if ((flag != null) && flag.startsWith(filterFlag))
+								matches.add(dataAnnotations[a]);
+						}
 					}
 					return ((QueriableAnnotation[]) matches.toArray(new QueriableAnnotation[matches.size()]));
 				}
 				public MutableAnnotation[] getMutableMatches(MutableAnnotation data) {
-					MutableAnnotation[] dataAnnotations = data.getMutableAnnotations();
 					LinkedList matches = new LinkedList();
-					for (int a = 0; a < dataAnnotations.length; a++) {
-						String flag = ffs.getFlag(dataAnnotations[a].getAnnotationID());
-						if ((flag != null) && flag.startsWith(filterFlag))
-							matches.add(dataAnnotations[a]);
+					if (showParagraphs.isSelected()) {
+						MutableAnnotation[] dataParagraphs = data.getMutableAnnotations(MutableAnnotation.PARAGRAPH_TYPE);
+						for (int p = 0; p < dataParagraphs.length; p++) {
+							String flag = ffs.getFlag(dataParagraphs[p].getAnnotationID());
+							if ((flag != null) && flag.startsWith(filterFlag)) {
+								matches.add(dataParagraphs[p]);
+								continue;
+							}
+							QueriableAnnotation[] dataAnnotations = dataParagraphs[p].getAnnotations();
+							for (int a = 0; a < dataAnnotations.length; a++) {
+								flag = ffs.getFlag(dataAnnotations[a].getAnnotationID());
+								if ((flag != null) && flag.startsWith(filterFlag)) {
+									matches.add(dataParagraphs[p]);
+									break;
+								}
+							}
+						}
+					}
+					else {
+						MutableAnnotation[] dataAnnotations = data.getMutableAnnotations();
+						for (int a = 0; a < dataAnnotations.length; a++) {
+							String flag = ffs.getFlag(dataAnnotations[a].getAnnotationID());
+							if ((flag != null) && flag.startsWith(filterFlag))
+								matches.add(dataAnnotations[a]);
+						}
 					}
 					return ((MutableAnnotation[]) matches.toArray(new MutableAnnotation[matches.size()]));
 				}
@@ -265,11 +318,9 @@ public class FlaggedAnnotationViewer extends AbstractDocumentViewer {
 				
 				//	initialize display
 				this.annotationTable = new JTable();
-				this.annotationTable.setDefaultRenderer(Object.class, new TooltipAwareComponentRenderer(5, data.getTokenizer()));
 				this.annotationTable.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
 				this.annotationTable.addMouseListener(new MouseAdapter() {
 					public void mouseClicked(MouseEvent me) {
-						
 						int clickRowIndex = annotationTable.rowAtPoint(me.getPoint());
 						int rowIndex = annotationTable.getSelectedRow();
 						if ((clickRowIndex != -1) && ((clickRowIndex < rowIndex) || (clickRowIndex >= (rowIndex + annotationTable.getSelectedRowCount())))) {
@@ -403,9 +454,14 @@ public class FlaggedAnnotationViewer extends AbstractDocumentViewer {
 				}
 				
 				this.annotationTable.setModel(new AnnotationNavigatorTableModel(this.annotationTrays));
-				this.annotationTable.getColumnModel().getColumn(0).setMaxWidth(120);
-				this.annotationTable.getColumnModel().getColumn(1).setMaxWidth(50);
+				this.annotationTable.getColumnModel().getColumn(0).setPreferredWidth(150);
+				this.annotationTable.getColumnModel().getColumn(0).setMaxWidth(150);
+				this.annotationTable.getColumnModel().getColumn(1).setPreferredWidth(150);
+				this.annotationTable.getColumnModel().getColumn(1).setMaxWidth(150);
+				this.annotationTable.getColumnModel().getColumn(2).setPreferredWidth(50);
 				this.annotationTable.getColumnModel().getColumn(2).setMaxWidth(50);
+				this.annotationTable.getColumnModel().getColumn(3).setPreferredWidth(50);
+				this.annotationTable.getColumnModel().getColumn(3).setMaxWidth(50);
 				
 				this.sortColumn = -1;
 				this.sortDescending = false;
@@ -451,13 +507,34 @@ public class FlaggedAnnotationViewer extends AbstractDocumentViewer {
 				ded.setVisible(true);
 				
 				//	finish
-				if (ded.committed && ded.isContentModified()) this.refreshAnnotations();
+				if (ded.committed && (ded.isContentModified() || ded.unFlagged))
+					this.refreshAnnotations();
 			}
 			
 			class DocumentEditDialog extends DocumentEditorDialog {
 				private boolean committed = false;
-				private DocumentEditDialog(JDialog owner, GoldenGATE host, DocumentEditor parent, String title, MutableAnnotation docPart) {
-					super(owner, host, parent, title, docPart);
+				private boolean unFlagged = false;
+				private DocumentEditDialog(JDialog owner, GoldenGATE host, DocumentEditor parent, String title, final MutableAnnotation data) {
+					super(owner, host, parent, title, data);
+					
+					JButton okUnFlagButton = new JButton("OK & Un-Flag");
+					okUnFlagButton.setBorder(BorderFactory.createRaisedBevelBorder());
+					okUnFlagButton.setPreferredSize(new Dimension(100, 21));
+					okUnFlagButton.addActionListener(new ActionListener() {
+						public void actionPerformed(ActionEvent ae) {
+							DocumentEditDialog.this.committed = true;
+							DocumentEditDialog.this.unFlagged = true;
+							DocumentEditDialog.this.documentEditor.writeChanges();
+							ffs.removeFlag(data.getAnnotationID());
+							if (showParagraphs.isSelected()) {
+								QueriableAnnotation[] dataAnnotations = data.getAnnotations();
+								for (int a = 0; a < dataAnnotations.length; a++)
+									ffs.removeFlag(dataAnnotations[a].getAnnotationID());
+							}
+							DocumentEditDialog.this.dispose();
+						}
+					});
+					this.mainButtonPanel.add(okUnFlagButton);
 					
 					JButton okButton = new JButton("OK");
 					okButton.setBorder(BorderFactory.createRaisedBevelBorder());
@@ -537,49 +614,57 @@ public class FlaggedAnnotationViewer extends AbstractDocumentViewer {
 				mi = new JMenuItem("Un-Flag");
 				mi.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent ae) {
-						for (int r = 0; r < trays.length; r++)
+						for (int r = 0; r < trays.length; r++) {
 							ffs.removeFlag(trays[r].annotation.getAnnotationID());
+							if (showParagraphs.isSelected()) {
+								QueriableAnnotation[] dataAnnotations = trays[r].annotation.getAnnotations();
+								for (int a = 0; a < dataAnnotations.length; a++)
+									ffs.removeFlag(dataAnnotations[a].getAnnotationID());
+							}
+						}
 						refreshAnnotations();
 					}
 				});
 				menu.add(mi);
 				
-				mi = new JMenuItem("Remove");
-				mi.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent ae) {
-						for (int r = 0; r < trays.length; r++)
-							data.removeAnnotation(trays[r].annotation);
-						refreshAnnotations();
-					}
-				});
-				menu.add(mi);
-				
-				if (rows == 1) {
-					mi = new JMenuItem("Remove All");
+				if (!showParagraphs.isSelected()) {
+					mi = new JMenuItem("Remove");
 					mi.addActionListener(new ActionListener() {
 						public void actionPerformed(ActionEvent ae) {
-							String value = tray.annotation.getValue();
-							int annotationCount = 0;
-							for (int a = 0; a < annotationTrays.length; a++)
-								if (annotationTrays[a].annotation.getValue().equals(value)) {
-									annotationCount ++;
-									data.removeAnnotation(annotationTrays[a].annotation);
-								}
-							if (annotationCount > 0) refreshAnnotations();
+							for (int r = 0; r < trays.length; r++)
+								data.removeAnnotation(trays[r].annotation);
+							refreshAnnotations();
+						}
+					});
+					menu.add(mi);
+					
+					if (rows == 1) {
+						mi = new JMenuItem("Remove All");
+						mi.addActionListener(new ActionListener() {
+							public void actionPerformed(ActionEvent ae) {
+								String value = tray.annotation.getValue();
+								int annotationCount = 0;
+								for (int a = 0; a < annotationTrays.length; a++)
+									if (annotationTrays[a].annotation.getValue().equals(value)) {
+										annotationCount ++;
+										data.removeAnnotation(annotationTrays[a].annotation);
+									}
+								if (annotationCount > 0) refreshAnnotations();
+							}
+						});
+						menu.add(mi);
+					}
+					
+					mi = new JMenuItem("Delete");
+					mi.addActionListener(new ActionListener() {
+						public void actionPerformed(ActionEvent ae) {
+							for (int r = trays.length; r > 0; r--)
+								data.removeTokens(trays[r - 1].annotation);
+							refreshAnnotations();
 						}
 					});
 					menu.add(mi);
 				}
-				
-				mi = new JMenuItem("Delete");
-				mi.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent ae) {
-						for (int r = trays.length; r > 0; r--)
-							data.removeTokens(trays[r - 1].annotation);
-						refreshAnnotations();
-					}
-				});
-				menu.add(mi);
 				
 				menu.getPopupMenu().show(this.annotationTable, me.getX(), me.getY());
 			}
@@ -591,7 +676,7 @@ public class FlaggedAnnotationViewer extends AbstractDocumentViewer {
 					this.annotation = annotation;
 				}
 			}
-		
+			
 			private class AnnotationNavigatorTableModel implements TableModel {
 				private AnnotationTray[] annotations;
 				private boolean isMatchesOnly = true;
@@ -659,43 +744,6 @@ public class FlaggedAnnotationViewer extends AbstractDocumentViewer {
 				}
 				public void removeTableModelListener(TableModelListener l) {}
 				public void setValueAt(Object newValue, int rowIndex, int columnIndex) {}
-			}
-			
-			private class TooltipAwareComponentRenderer extends DefaultTableCellRenderer {
-				private HashSet tooltipColumns = new HashSet();
-				private Tokenizer tokenizer;
-				TooltipAwareComponentRenderer(int tooltipColumn, Tokenizer tokenizer) {
-					this.tooltipColumns.add("" + tooltipColumn);
-					this.tokenizer = tokenizer;
-				}
-				public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-					JComponent component = ((value instanceof JComponent) ? ((JComponent) value) : (JComponent) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column));
-					if (this.tooltipColumns.contains("" + row) && (component instanceof JComponent))
-						((JComponent) component).setToolTipText(this.produceTooltipText(new PlainTokenSequence(value.toString(), this.tokenizer)));
-					return component;
-				}
-				private String produceTooltipText(TokenSequence tokens) {
-					if (tokens.size() < 100) return TokenSequenceUtils.concatTokens(tokens);
-					
-					StringVector lines = new StringVector();
-					int startToken = 0;
-					int lineLength = 0;
-					Token lastToken = null;
-					
-					for (int t = 0; t < tokens.size(); t++) {
-						Token token = tokens.tokenAt(t);
-						lineLength += token.length();
-						if (lineLength > 100) {
-							lines.addElement(TokenSequenceUtils.concatTokens(tokens, startToken, (t - startToken + 1)));
-							startToken = (t + 1);
-							lineLength = 0;
-						} else if (Gamta.insertSpace(lastToken, token)) lineLength++;
-					}
-					if (startToken < tokens.size())
-						lines.addElement(TokenSequenceUtils.concatTokens(tokens, startToken, (tokens.size() - startToken)));
-					
-					return ("<HTML>" + lines.concatStrings("<BR>") + "</HTML>");
-				}
 			}
 		}
 	}

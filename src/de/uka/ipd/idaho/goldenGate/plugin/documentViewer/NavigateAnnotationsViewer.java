@@ -1015,8 +1015,8 @@ public class NavigateAnnotationsViewer extends AbstractDocumentViewer {
 			
 			class DocumentEditDialog extends DocumentEditorDialog {
 				private boolean committed = false;
-				private DocumentEditDialog(JDialog owner, GoldenGATE host, DocumentEditor parent, String title, MutableAnnotation docPart) {
-					super(owner, host, parent, title, docPart);
+				private DocumentEditDialog(JDialog owner, GoldenGATE host, DocumentEditor parent, String title, MutableAnnotation data) {
+					super(owner, host, parent, title, data);
 					
 					JButton okButton = new JButton("OK");
 					okButton.setBorder(BorderFactory.createRaisedBevelBorder());
