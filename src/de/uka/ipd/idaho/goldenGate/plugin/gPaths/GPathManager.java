@@ -304,9 +304,10 @@ public class GPathManager extends AbstractAnnotationFilterManager {
 	 * @see de.uka.ipd.idaho.goldenGate.plugins.AnnotationFilterManager#getAnnotationFilter(java.lang.String)
 	 */
 	public AnnotationFilter getAnnotationFilter(String name) {
-		GPath path = new GPath(this.getGPath(name));
-		if (path == null) return null;
-		else return new GPathAnnotationFilter(name, path);
+		String path = this.getGPath(name);
+		if (path == null)
+			return null;
+		else return new GPathAnnotationFilter(name, new GPath(path));
 	}
 	
 	private class GPathAnnotationFilter implements AnnotationFilter {
@@ -475,6 +476,9 @@ public class GPathManager extends AbstractAnnotationFilterManager {
 			}
 			public Object removeAttribute(String name) {
 				return this.data.removeAttribute(name);
+			}
+			public void setAttribute(String name) {
+				this.data.setAttribute(name);
 			}
 			public Object setAttribute(String name, Object value) {
 				return this.data.setAttribute(name, value);

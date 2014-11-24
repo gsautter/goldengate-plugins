@@ -61,13 +61,15 @@ import de.uka.ipd.idaho.gamta.util.imaging.PageImage;
 import de.uka.ipd.idaho.gamta.util.imaging.PageImageInputStream;
 import de.uka.ipd.idaho.gamta.util.imaging.PageImageStore;
 import de.uka.ipd.idaho.gamta.util.imaging.PageImageStore.AbstractPageImageStore;
-import de.uka.ipd.idaho.gamta.util.imaging.pdf.PdfExtractor;
 import de.uka.ipd.idaho.gamta.util.swing.ProgressMonitorDialog;
 import de.uka.ipd.idaho.goldenGate.DocumentEditor;
 import de.uka.ipd.idaho.goldenGate.plugins.AbstractDocumentFormatProvider;
 import de.uka.ipd.idaho.goldenGate.plugins.DocumentFormat;
 import de.uka.ipd.idaho.goldenGate.plugins.MonitorableDocumentFormat;
 import de.uka.ipd.idaho.goldenGate.util.DialogPanel;
+import de.uka.ipd.idaho.im.ImDocument;
+import de.uka.ipd.idaho.im.gamta.ImDocumentRoot;
+import de.uka.ipd.idaho.im.pdf.PdfExtractor;
 
 /**
  * Document format provider for PDF documents, both text and image based. This
@@ -117,17 +119,22 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 					return null;
 				return new PageImageInputStream(dataProvider.getInputStream("cache/" + name), this);
 			}
-			public void storePageImage(String name, PageImage pageImage) throws IOException {
+			public boolean storePageImage(String name, PageImage pageImage) throws IOException {
 				if (!name.endsWith(IMAGE_FORMAT))
 					name += ("." + IMAGE_FORMAT);
 				try {
 					OutputStream imageOut = dataProvider.getOutputStream("cache/" + name);
 					pageImage.write(imageOut);
 					imageOut.close();
+					return true;
 				}
 				catch (IOException ioe) {
 					ioe.printStackTrace(System.out);
+					return false;
 				}
+			}
+			public int getPriority() {
+				return 0; // we're storing each and every page image, so yield to more specific stores
 			}
 		};
 		PageImage.addPageImageSource(pis);
@@ -341,6 +348,7 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 					baos.write(buffer, 0, read);
 					pm.setInfo(" - " + baos.size() + " bytes read");
 				}
+				bis.close();
 				byte[] bytes = baos.toByteArray();
 				pm.setInfo(" - " + bytes.length + " bytes read in total");
 				
@@ -359,19 +367,27 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 				}
 				
 				//	generate base document
-				doc = Gamta.newDocument((parent == null) ? Gamta.INNER_PUNCTUATION_TOKENIZER : parent.getTokenizer());
-				
-				//	import PDF document
-				doc.setAttribute(DOCUMENT_ID_ATTRIBUTE, docId);
-				doc.setDocumentProperty(DOCUMENT_ID_ATTRIBUTE, docId);
+				ImDocument imDoc = new ImDocument(docId);
+				imDoc.setAttribute(ImDocument.TOKENIZER_ATTRIBUTE, ((parent == null) ? Gamta.INNER_PUNCTUATION_TOKENIZER : parent.getTokenizer()));
 				pm.setInfo(" - document ID generated");
 				
+				//	parse PDF
 				pm.setStep("Parsing PDF Document");
 				Document pdfDoc = new Document();
 				pdfDoc.setInputStream(new ByteArrayInputStream(bytes), "");
 				
+				//	extract content
 				pm.setStep("Extracting Document Content ...");
-				this.loadDocument(doc, pdfDoc, bytes, pm);
+				imDoc = this.loadDocument(imDoc, pdfDoc, bytes, pm);
+				
+				//	wrap document
+				ImDocumentRoot wDoc = new ImDocumentRoot(imDoc, ImDocumentRoot.NORMALIZATION_LEVEL_RAW);
+				wDoc.setShowTokensAsWordsAnnotations(true);
+				wDoc.setUseRandomAnnotationIDs(false);
+				doc = Gamta.copyDocument(wDoc);
+				
+				//	clean up
+				imDoc.dispose();
 			}
 			catch (PDFException pdfe) {
 				pdfe.printStackTrace(System.out);
@@ -398,7 +414,7 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 			return doc;
 		}
 		
-		abstract MutableAnnotation loadDocument(DocumentRoot doc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException;
+		abstract ImDocument loadDocument(ImDocument imDoc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException;
 		
 		abstract String getCachePrefix();
 		
@@ -438,8 +454,8 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 		String getCachePrefix() {
 			return "";
 		}
-		MutableAnnotation loadDocument(DocumentRoot doc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException {
-			return pdfExtractor.loadGenericPdf(doc, pdfDoc, bytes, 1, pm);
+		ImDocument loadDocument(ImDocument imDoc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException {
+			return pdfExtractor.loadGenericPdf(imDoc, pdfDoc, bytes, 1, pm);
 		}
 	}
 	
@@ -450,8 +466,8 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 		String getCachePrefix() {
 			return "T/";
 		}
-		MutableAnnotation loadDocument(DocumentRoot doc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException {
-			return pdfExtractor.loadTextPdf(doc, pdfDoc, bytes, pm);
+		ImDocument loadDocument(ImDocument imDoc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException {
+			return pdfExtractor.loadTextPdf(imDoc, pdfDoc, bytes, pm);
 		}
 	}
 	
@@ -462,8 +478,8 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 		String getCachePrefix() {
 			return "I/";
 		}
-		MutableAnnotation loadDocument(DocumentRoot doc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException {
-			return pdfExtractor.loadImagePdf(doc, pdfDoc, bytes, 1, pm);
+		ImDocument loadDocument(ImDocument imDoc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException {
+			return pdfExtractor.loadImagePdf(imDoc, pdfDoc, bytes, 1, pm);
 		}
 	}
 	
@@ -474,8 +490,8 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 		String getCachePrefix() {
 			return "P/";
 		}
-		MutableAnnotation loadDocument(DocumentRoot doc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException {
-			return pdfExtractor.loadImagePdfPages(doc, pdfDoc, bytes, 1, pm);
+		ImDocument loadDocument(ImDocument imDoc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException {
+			return pdfExtractor.loadImagePdfPages(imDoc, pdfDoc, bytes, 1, pm);
 		}
 	}
 	
@@ -486,8 +502,8 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 		String getCachePrefix() {
 			return "B/";
 		}
-		MutableAnnotation loadDocument(DocumentRoot doc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException {
-			return pdfExtractor.loadImagePdfBlocks(doc, pdfDoc, bytes, 1, pm);
+		ImDocument loadDocument(ImDocument imDoc, Document pdfDoc, byte[] bytes, ProgressMonitor pm) throws IOException {
+			return pdfExtractor.loadImagePdfBlocks(imDoc, pdfDoc, bytes, 1, pm);
 		}
 	}
 	

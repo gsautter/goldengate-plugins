@@ -5,64 +5,43 @@
 -->
 
 <project name="import">
-	<target name="fetch" depends="fetch-su,fetch-hxu,fetch-gamta,fetch-eio,fetch-iclibs,fetch-gg,fetch-img,fetch-fb,fetch-ocr,fetch-icepdf,fetch-pdf" />
+	<target name="fetch" depends="fetch-ic,fetch-ie,fetch-gg" />
 	
-	
-	<target name="check-fetch-su" unless="su.exists">
-		<available property="su.exists" file="../idaho-core/dist/StringUtils.jar"/>
+	<target name="check-fetch-ic" unless="ic.exists">
+		<available property="ic.exists" file="../idaho-core/lib/mail.jar"/>
 	</target>
-	<target name="fetch-su" depends="check-fetch-su" if="${su.exists}">
+	<target name="fetch-ic" depends="check-fetch-ic" if="${ic.exists}">
+    	<copy file="../idaho-core/lib/mail.jar" todir="${lib.home}" overwrite="true" verbose="false" />
     	<copy file="../idaho-core/dist/StringUtils.jar" todir="${lib.home}" overwrite="true" verbose="false" />
-	</target>
-	
-	<target name="check-fetch-hxu" unless="hxu.exists">
-		<available property="hxu.exists" file="../idaho-core/dist/HtmlXmlUtil.jar"/>
-	</target>
-	<target name="fetch-hxu" depends="check-fetch-hxu" if="${hxu.exists}">
     	<copy file="../idaho-core/dist/HtmlXmlUtil.jar" todir="${lib.home}" overwrite="true" verbose="false" />
-	</target>
-	
-	<target name="check-fetch-gamta" unless="gamta.exists">
-		<available property="gamta.exists" file="../idaho-core/dist/Gamta.jar"/>
-	</target>
-	<target name="fetch-gamta" depends="check-fetch-gamta" if="${gamta.exists}">
     	<copy file="../idaho-core/dist/Gamta.jar" todir="${lib.home}" overwrite="true" verbose="false" />
-	</target>
-	
-	<target name="check-fetch-eio" unless="eio.exists">
-		<available property="eio.exists" file="../idaho-core/dist/EasyIO.jar"/>
-	</target>
-	<target name="fetch-eio" depends="check-fetch-eio" if="${eio.exists}">
     	<copy file="../idaho-core/dist/EasyIO.jar" todir="${lib.home}" overwrite="true" verbose="false" />
 	</target>
 	
-	<target name="fetch-gg">
+	<target name="check-fetch-ie" unless="ie.exists">
+		<available property="ie.exists" file="../idaho-extensions/dist/GamtaImagingAPI.jar"/>
+	</target>
+	<target name="fetch-ie" depends="check-fetch-ie" if="${ie.exists}">
+		<copy file="../idaho-extensions/dist/GamtaImagingAPI.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+		<copy file="../idaho-extensions/dist/GamtaFeedbackAPI.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+	
+	<target name="check-fetch-im" unless="im.exists">
+		<available property="im.exists" file="../idaho-imagemarkup/dist/ImageMarkup.jar"/>
+	</target>
+	<target name="fetch-im" depends="check-fetch-im" if="${im.exists}">
+		<copy file="../idaho-imagemarkup/lib/icepdf-core.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+		<copy file="../idaho-imagemarkup/dist/ImageMarkup.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+		<copy file="../idaho-imagemarkup/dist/ImageMarkupOCR.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+		<copy file="../idaho-imagemarkup/dist/ImageMarkupOCR.bin.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+		<copy file="../idaho-imagemarkup/dist/ImageMarkupPDF.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+		<copy file="../idaho-imagemarkup/dist/ImageMarkupPDF.bin.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+	
+	<target name="check-fetch-gg" unless="gg.exists">
+		<available property="gg.exists" file="../goldengate-editor/dist/GoldenGATE.jar"/>
+	</target>
+	<target name="fetch-gg" depends="check-fetch-gg" if="${gg.exists}">
     	<copy file="../goldengate-editor/dist/GoldenGATE.jar" todir="${lib.home}" overwrite="true" verbose="false" />
-	</target>
-	
-	<target name="check-fetch-ext" unless="ext.exists">
-		<available property="ext.exists" file="../idaho-extensions/dist/GamtaImagingAPI.jar"/>
-	</target>
-	<target name="fetch-img" depends="check-fetch-ext" if="${ext.exists}">
-    	<copy file="../idaho-extensions/dist/GamtaImagingAPI.jar" todir="${lib.home}" overwrite="true" verbose="false" />
-	</target>
-	<target name="fetch-fb" depends="check-fetch-ext" if="${ext.exists}">
-    	<copy file="../idaho-extensions/dist/GamtaFeedbackAPI.jar" todir="${lib.home}" overwrite="true" verbose="false" />
-	</target>
-	<target name="fetch-ocr" depends="check-fetch-ext" if="${ext.exists}">
-    	<copy file="../idaho-extensions/dist/GamtaOCR.jar" todir="${lib.home}" overwrite="true" verbose="false" />
-	</target>
-	<target name="fetch-icepdf" depends="check-fetch-ext" if="${ext.exists}">
-    	<copy file="../idaho-extensions/lib/icepdf-core.jar" todir="${lib.home}" overwrite="true" verbose="false" />
-	</target>
-	<target name="fetch-pdf" depends="check-fetch-ext" if="${ext.exists}">
-    	<copy file="../idaho-extensions/dist/GamtaPDF.jar" todir="${lib.home}" overwrite="true" verbose="false" />
-	</target>
-	
-	<target name="check-fetch-iclibs" unless="iclibs.exists">
-		<available property="iclibs.exists" file="../idaho-core/lib/mail.jar"/>
-	</target>
-	<target name="fetch-iclibs" depends="check-fetch-iclibs" if="${iclibs.exists}">
-    	<copy file="../idaho-core/lib/mail.jar" todir="${lib.home}" overwrite="true" verbose="false" />
 	</target>
 </project>

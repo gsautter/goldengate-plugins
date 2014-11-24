@@ -506,7 +506,8 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 	}
 	
 	private Pipeline getPipeline(Settings settings) {
-		if (settings == null) return null;
+		if (settings == null)
+			return null;
 		try {
 			String interactivityLevel = settings.getSetting(Pipeline.INTERACTIVITY_LEVEL_ATTRIBUTE, Pipeline.DEFAULT_INTERACTIVITY_LEVEL);
 			Pipeline pipeline = new Pipeline(interactivityLevel);
@@ -521,7 +522,8 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 				}
 			}
 			return pipeline;
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}
@@ -590,7 +592,7 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 		button.setBorder(BorderFactory.createRaisedBevelBorder());
 		button.setPreferredSize(new Dimension(100, 21));
 		button.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
+			public void actionPerformed(ActionEvent ae) {
 				createPipeline();
 			}
 		});
@@ -599,7 +601,7 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 		button.setBorder(BorderFactory.createRaisedBevelBorder());
 		button.setPreferredSize(new Dimension(100, 21));
 		button.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
+			public void actionPerformed(ActionEvent ae) {
 				clonePipeline();
 			}
 		});
@@ -608,7 +610,7 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 		button.setBorder(BorderFactory.createRaisedBevelBorder());
 		button.setPreferredSize(new Dimension(100, 21));
 		button.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
+			public void actionPerformed(ActionEvent ae) {
 				if (deleteResource(resourceNameList.getSelectedName()))
 					resourceNameList.refresh();
 			}
@@ -703,7 +705,7 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 			commitButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			commitButton.setPreferredSize(new Dimension(100, 21));
 			commitButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					pipelineName = nameField.getText();
 					dispose();
 				}
@@ -713,7 +715,7 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 			abortButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			abortButton.setPreferredSize(new Dimension(100, 21));
 			abortButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					pipelineName = null;
 					dispose();
 				}
@@ -765,7 +767,7 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 			commitButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			commitButton.setPreferredSize(new Dimension(100, 21));
 			commitButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					dispose();
 				}
 			});
@@ -774,7 +776,7 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 			abortButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			abortButton.setPreferredSize(new Dimension(100, 21));
 			abortButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					pipelineName = null;
 					dispose();
 				}

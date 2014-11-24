@@ -102,6 +102,9 @@
 	<property name="jar.translator" value="${dist.home}/Plugins/GuiTranslator.jar.off" />
 
 	<!-- path to the .jar file that shall be created -->
+	<property name="jar.feedback" value="${dist.home}/Plugins/FlaggedFeedback.jar" />
+
+	<!-- path to the .jar file that shall be created -->
 	<property name="jar.filtered" value="${dist.home}/Plugins/FilteredDP.jar" />
 
 	<!-- path to the .jar file that shall be created -->

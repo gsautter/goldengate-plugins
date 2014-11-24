@@ -87,14 +87,12 @@ public class CharacterNormalizer extends CharacterNormalizationAnalyzer implemen
 			int s = v;
 			while ((s != 0) && (data.getWhitespaceAfter(s-1).length() == 0))
 				s--;
-			int e = v;
-			while ((e < data.size()) && (data.getWhitespaceAfter(e).length() == 0))
+			int e = v + 1;
+			while ((e < data.size()) && (data.getWhitespaceAfter(e-1).length() == 0))
 				e++;
-			if (e == data.size())
-				e--;
 			
 			//	normalize whole block
-			String originalBlock = TokenSequenceUtils.concatTokens(data, s, (e - s + 1), false, false);
+			String originalBlock = TokenSequenceUtils.concatTokens(data, s, (e - s), false, false);
 			String normalizedBlock;
 			
 			//	no user input so far, try automatic normalization
@@ -104,7 +102,7 @@ public class CharacterNormalizer extends CharacterNormalizationAnalyzer implemen
 				//	check for unknown special characters
 				if (this.characterNormalization.hasUnNormalizedLetters(normalizedBlock)) {
 					
-					//	as user for transcript if allowed to
+					//	ask user for transcript if allowed to
 					if (parameters.containsKey(INTERACTIVE_PARAMETER)) {
 						forUserInput.add(originalBlock);
 						continue;
@@ -126,7 +124,7 @@ public class CharacterNormalizer extends CharacterNormalizationAnalyzer implemen
 			
 			//	remember offsets
 			int so = data.tokenAt(s).getStartOffset();
-			int eo = data.tokenAt(e).getEndOffset();
+			int eo = data.tokenAt(e-1).getEndOffset();
 			
 			//	narrow boundaries, and store token attributes
 			int nts = 0;
@@ -136,24 +134,33 @@ public class CharacterNormalizer extends CharacterNormalizationAnalyzer implemen
 				nts++;
 			}
 			int nte = normalizedTokens.size();
-			while ((e > v) && (nte > 1) && (data.valueAt(e).equals(normalizedTokens.valueAt(nte-1)))) {
-				normalizedTokens.tokenAt(nte-1).copyAttributes(data.tokenAt(e));
+			while ((e > v) && (nte > 1) && (data.valueAt(e-1).equals(normalizedTokens.valueAt(nte-1)))) {
+				normalizedTokens.tokenAt(nte-1).copyAttributes(data.tokenAt(e-1));
 				e--;
 				nte--;
 			}
-			for (int t = (nts+1); t < nte; t++)
-				normalizedTokens.tokenAt(t).copyAttributes(data.tokenAt(s-nts+t));
 			
 			//	catch empty change input
-			if (nts == nte)
+			if ((nte <= nts) || (e <= s))
 				continue;
 			
+			//	store attributes of tokens we actually have to change (if normalization mapping is expansive (ASCII fractions !!!), use last original token (usually a single token anyway))
+			for (int t = nts; t < nte; t++)
+				normalizedTokens.tokenAt(t).copyAttributes(data.tokenAt(Math.min((s-nts+t), (e-1))));
+			
 			//	remember original
-			String original = TokenSequenceUtils.concatTokens(data, s, (e-s+1), false, true);
-			System.out.println("Original tokens are: " + TokenSequenceUtils.concatTokens(data, s, (e-s+1), true, true));
+			String original = TokenSequenceUtils.concatTokens(data, s, (e-s), false, true);
+			System.out.println("Original tokens are: " + TokenSequenceUtils.concatTokens(data, s, (e-s), true, true));
 			
 			//	replace what's necessary
-			data.setChars(TokenSequenceUtils.concatTokens(normalizedTokens, false, false), so, (eo-so));
+			try {
+				data.setChars(TokenSequenceUtils.concatTokens(normalizedTokens, false, false), so, (eo-so));
+			}
+			//	 catch runtime exceptions that might be thrown by data model implementations if number of tokens changes
+			catch (RuntimeException re) {
+				re.printStackTrace(System.out);
+				continue;
+			}
 			
 			//	mark what we just did
 			Annotation normalized = data.addAnnotation(CharacterNormalization.NORMALIZED_TOKEN_ANNOTATION_TYPE, s, (nte-nts));
@@ -175,7 +182,7 @@ public class CharacterNormalizer extends CharacterNormalizationAnalyzer implemen
 				this.normalize(data, parameters, theUserInput);
 		}
 		
-		//	we're in the recursive invokation, don't do the cleanup here
+		//	we're in the recursive invocation, don't do the cleanup here
 		if (userInput != null)
 			return;
 		
@@ -357,7 +364,6 @@ public class CharacterNormalizer extends CharacterNormalizationAnalyzer implemen
 			}
 			private void validateTranscript() {
 				String t = this.transcript.getText();
-//				this.transcriptError = ((t.trim().length() == 0) || hasUnNormalizedLetters(t));
 				this.transcriptError = (hasUnNormalizedLetters(t) && !this.noTransscript.isSelected()); // we have to accept empty transcripts, as they occur with Russian 'escape characters'
 				this.transcript.setBorder(
 						this.transcriptError

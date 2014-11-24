@@ -35,7 +35,6 @@
 		</delete>
 	</target>
 	
-	
 	<!-- copy everything that needs to be in the distro -->
 	<target name="copy" depends="mkdirs" >
 		
@@ -50,8 +49,11 @@
 		<!-- copy required libraries -->
 		<copy todir="${dist.home}/Plugins/PdfDocumentFormatBin" overwrite="true" verbose="false">
 			<fileset dir="${lib.home}">
-				<include name="GamtaOCR.jar" />
-				<include name="GamtaPDF.jar" />
+				<include name="ImageMarkup.jar" />
+				<include name="ImageMarkupOCR.jar" />
+				<include name="ImageMarkupOCR.bin.jar" />
+				<include name="ImageMarkupPDF.jar" />
+				<include name="ImageMarkupPDF.bin.jar" />
 				<include name="icepdf-core.jar" />
 			</fileset>
 		</copy>
