@@ -33,6 +33,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
@@ -62,6 +63,8 @@ import javax.swing.event.ListDataListener;
 
 import de.uka.ipd.idaho.easyIO.settings.Settings;
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
+import de.uka.ipd.idaho.gamta.util.ProgressMonitor;
+import de.uka.ipd.idaho.gamta.util.swing.ProgressMonitorWindow;
 import de.uka.ipd.idaho.goldenGate.DocumentEditor;
 import de.uka.ipd.idaho.goldenGate.DocumentEditorDialog;
 import de.uka.ipd.idaho.goldenGate.GoldenGATE;
@@ -137,7 +140,6 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 			
 			//	apply processor
 			ResourceSplashScreen splashScreen = new ResourceSplashScreen((this.getResourceTypeLabel() + " Running ..."), ("Please wait while '" + this.getResourceTypeLabel() + ": " + pn + "' is processing the Document ..."));
-//			DocumentProcessor dp = new PipelineDocumentProcessor(data, splashScreen, pn, pipeline);
 			DocumentProcessor dp = new PipelineDocumentProcessor(splashScreen, pn, pipeline);
 			data.applyDocumentProcessor(dp, splashScreen, parameters);
 		}
@@ -181,7 +183,6 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 	 */
 	public DocumentProcessor getDocumentProcessor(String name) {
 		Pipeline pipeline = this.getPipeline(name);
-//		return ((pipeline == null) ? null : new PipelineDocumentProcessor(null, null, name, pipeline));
 		return ((pipeline == null) ? null : new PipelineDocumentProcessor(null, name, pipeline));
 	}
 	
@@ -232,12 +233,12 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 		}
 	}
 
-	private class PipelineDocumentProcessor implements DocumentProcessor {
+	private class PipelineDocumentProcessor implements MonitorableDocumentProcessor {
 		
 		private String name;
 		private Pipeline pipeline;
 		
-		private ResourceSplashScreen splashScreen;
+		private ProgressMonitor splashScreen;
 		
 		PipelineDocumentProcessor(ResourceSplashScreen splashScreen, String name, Pipeline pipeline) {
 			this.splashScreen = splashScreen;
@@ -272,24 +273,37 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 		public void process(MutableAnnotation data) {
 			Properties parameters = new Properties();
 			parameters.setProperty(Resource.INTERACTIVE_PARAMETER, Resource.INTERACTIVE_PARAMETER);
-			this.process(data, parameters);
+			this.process(data, parameters, this.splashScreen);
 		}
 		
 		/*
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentProcessor#process(de.uka.ipd.idaho.gamta.MutableAnnotation, boolean)
 		 */
 		public void process(MutableAnnotation data, Properties parameters) {
-			this.process(data, (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.allowFeedback()), (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.editAfterStep()), (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.editResult()), this.splashScreen, new HashSet(), parameters, true);
+			this.process(data, parameters, this.splashScreen);
 		}
 		
-		private void process(MutableAnnotation data, boolean allowFeedback, boolean editAfterStep, boolean editResult, ResourceSplashScreen splashScreen, HashSet activePipelines, Properties parameters, boolean isTopInvocation) {
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.MonitorableDocumentProcessor#process(de.uka.ipd.idaho.gamta.MutableAnnotation, java.util.Properties, de.uka.ipd.idaho.gamta.util.ProgressMonitor)
+		 */
+		public void process(MutableAnnotation data, Properties parameters, ProgressMonitor pm) {
+			ProgressMonitorWindow pmw = null;
+			if (pm instanceof ProgressMonitorWindow)
+				pmw = ((ProgressMonitorWindow) pm);
+			else if (this.splashScreen instanceof ProgressMonitorWindow)
+				pmw = ((ProgressMonitorWindow) this.splashScreen);
+			this.process(data, (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.allowFeedback()), (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.editAfterStep()), (parameters.containsKey(INTERACTIVE_PARAMETER) && this.pipeline.editResult()), ((pmw == null) ? pm : pmw), new HashSet(), parameters, true);
+		}
+		
+		private void process(MutableAnnotation data, boolean allowFeedback, boolean editAfterStep, boolean editResult, ProgressMonitor splashScreen, HashSet activePipelines, Properties parameters, boolean isTopInvocation) {
 			DocumentProcessor[] parts = this.pipeline.getParts();
 			activePipelines.add(this.getName().toLowerCase());
 			
 			for (int p = 0; p < parts.length; p++) {
 				DocumentProcessor part = parts[p];
 				if (splashScreen != null) {
-					splashScreen.setText("Current Processor is " + part.getName());
+					if (splashScreen instanceof ResourceSplashScreen)
+						((ResourceSplashScreen) splashScreen).setText("Current Processor is " + part.getName());
 					if (isTopInvocation) {
 						splashScreen.setBaseProgress((100 * p) / parts.length);
 						splashScreen.setMaxProgress((100 * (p+1)) / parts.length);
@@ -317,9 +331,9 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 				
 				if ((editAfterStep && this.pipeline.editAfterStep()) || (editResult && ((p + 1) == parts.length) && this.pipeline.editResult())) {
 					DocumentEditDialog ded;
-					if (splashScreen == null)
-						ded = new DocumentEditDialog("Edit Document", data, ((p + 1) == parts.length));
-					else ded = new DocumentEditDialog(splashScreen.getDialog(), parent, "Edit Document", data, ((p + 1) == parts.length));
+					if (splashScreen instanceof ProgressMonitorWindow)
+						ded = new DocumentEditDialog(((ProgressMonitorWindow) splashScreen).getWindow(), parent, "Edit Document", data, ((p + 1) == parts.length));
+					else ded = new DocumentEditDialog("Edit Document", data, ((p + 1) == parts.length));
 					ded.setVisible(true);
 					if (ded.stopPipeline)
 						return;
@@ -341,8 +355,8 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 				this.init(isFinalDialog);
 			}
 			
-			DocumentEditDialog(JDialog splashScreen, GoldenGATE host, String title, MutableAnnotation docPart, boolean isFinalDialog) {
-				super(splashScreen, host, title, docPart);
+			DocumentEditDialog(Window owner, GoldenGATE host, String title, MutableAnnotation docPart, boolean isFinalDialog) {
+				super(owner, host, title, docPart);
 				this.host = host;
 				this.init(isFinalDialog);
 			}

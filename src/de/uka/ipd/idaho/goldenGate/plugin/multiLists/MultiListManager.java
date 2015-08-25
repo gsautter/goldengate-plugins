@@ -39,9 +39,14 @@ import java.awt.event.ItemListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,10 +57,12 @@ import java.util.Properties;
 import java.util.TreeMap;
 
 import javax.swing.BorderFactory;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
@@ -67,6 +74,7 @@ import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.TableModelListener;
+import javax.swing.filechooser.FileFilter;
 import javax.swing.table.TableModel;
 
 import de.uka.ipd.idaho.easyIO.settings.Settings;
@@ -94,7 +102,7 @@ import de.uka.ipd.idaho.stringUtils.csvHandler.StringTupel;
  * in CSV files. Lookups can use exact match, or different levels of fuzzieness,
  * each mode case sensitive or case insensitive. Different columns in the same
  * CSV file can use different modes. In case of multiple matching rows, the row
- * matched for the column with the strictes matching mode is considerd the
+ * matched for the column with the strictest matching mode is considered the
  * matching one. If multiple rows match with this mode, the first one is used.
  * Column entries from matching rows can be attached as attributes to the
  * generated annotations. CSV files can be shared among different multi list
@@ -1651,6 +1659,7 @@ public class MultiListManager extends AbstractDocumentProcessorManager {
 	
 	private class MultiListEditorPanel extends JPanel {
 		private JComboBox csvDataName;
+		private JFileChooser csvDataChooser;
 		private JTabbedPane columnLookupPanel = new JTabbedPane();
 		private JTextField annotationType;
 		private JPanel multiListPanel = new JPanel(new BorderLayout(), true);
@@ -1671,15 +1680,9 @@ public class MultiListManager extends AbstractDocumentProcessorManager {
 			this.listNames = listNames;
 			this.dataProvider = dataProvider;
 			
-			String[] dataNames = this.dataProvider.getDataNames();
-			StringVector csvDataNames = new StringVector();
-			for (int d = 0; d < dataNames.length; d++) {
-				if (dataNames[d].endsWith(".csv"))
-					csvDataNames.addElementIgnoreDuplicates(dataNames[d]);
-			}
-			csvDataNames.sortLexicographically(false, false);
-			this.csvDataName = new JComboBox(csvDataNames.toStringArray());
+			this.csvDataName = new JComboBox();
 			this.csvDataName.setEditable(false);
+			this.refreshCsvDataNames();
 			this.csvDataName.setSelectedItem(this.multiList.getSetting(CSV_DATA_NAME_PARAMETER));
 			this.csvDataName.addItemListener(new ItemListener() {
 				public void itemStateChanged(ItemEvent ie) {
@@ -1687,9 +1690,32 @@ public class MultiListManager extends AbstractDocumentProcessorManager {
 					dirty = true;
 				}
 			});
+			JButton importCsvData = new JButton("Import");
+			importCsvData.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent ae) {
+					importCsvData();
+				}
+			});
+//			String[] dataNames = this.dataProvider.getDataNames();
+//			StringVector csvDataNames = new StringVector();
+//			for (int d = 0; d < dataNames.length; d++) {
+//				if (dataNames[d].endsWith(".csv"))
+//					csvDataNames.addElementIgnoreDuplicates(dataNames[d]);
+//			}
+//			csvDataNames.sortLexicographically(false, false);
+//			this.csvDataName = new JComboBox(csvDataNames.toStringArray());
+//			this.csvDataName.setEditable(false);
+//			this.csvDataName.setSelectedItem(this.multiList.getSetting(CSV_DATA_NAME_PARAMETER, ((dataNames.length == 0) ? "" : dataNames[0])));
+//			this.csvDataName.addItemListener(new ItemListener() {
+//				public void itemStateChanged(ItemEvent ie) {
+//					setCsvDataName((String) csvDataName.getSelectedItem());
+//					dirty = true;
+//				}
+//			});
 			JPanel csvDataNamePanel = new JPanel(new BorderLayout(), true);
 			csvDataNamePanel.add(new JLabel("CSV File To Use:", JLabel.LEFT), BorderLayout.WEST);
 			csvDataNamePanel.add(this.csvDataName, BorderLayout.CENTER);
+			csvDataNamePanel.add(importCsvData, BorderLayout.EAST);
 			
 			this.annotationType = new JTextField(set.getSetting(ANNOTATION_TYPE_PARAMETER, ""));
 			this.annotationType.getDocument().addDocumentListener(new DocumentListener() {
@@ -1717,6 +1743,67 @@ public class MultiListManager extends AbstractDocumentProcessorManager {
 				if ((this.csvDataName.getItemCount() != 0) && csvDataName.equals(this.csvDataName.getSelectedItem()))
 					this.setCsvDataName(csvDataName);
 				else this.csvDataName.setSelectedItem(csvDataName);
+			}
+		}
+		
+		private void refreshCsvDataNames() {
+			String[] dataNames = this.dataProvider.getDataNames();
+			StringVector csvDataNames = new StringVector();
+			for (int d = 0; d < dataNames.length; d++) {
+				if (dataNames[d].endsWith(".csv"))
+					csvDataNames.addElementIgnoreDuplicates(dataNames[d]);
+			}
+			csvDataNames.sortLexicographically(false, false);
+			this.csvDataName.setModel(new DefaultComboBoxModel(csvDataNames.toStringArray()));
+		}
+		
+		private void importCsvData() {
+			if (this.csvDataChooser == null) {
+				this.csvDataChooser = new JFileChooser();
+				this.csvDataChooser.setAcceptAllFileFilterUsed(false);
+				this.csvDataChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+				this.csvDataChooser.addChoosableFileFilter(new FileFilter() {
+					public boolean accept(File file) {
+						if (file.isDirectory())
+							return true;
+						String lcfn = file.getName().toLowerCase();
+						return (lcfn.endsWith(".csv") || lcfn.endsWith(".tab") || lcfn.endsWith(".txt"));
+					}
+					public String getDescription() {
+						return "Tabular Files (.csv, .tab, .txt)";
+					}
+				});
+			}
+			if (this.csvDataChooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION)
+				return;
+			
+			File csvFile = this.csvDataChooser.getSelectedFile();
+			if (csvFile == null)
+				return;
+			if (csvFile.getAbsolutePath().replaceAll("\\/\\\\\\.\\:", "").startsWith(this.dataProvider.getAbsolutePath().replaceAll("\\/\\\\\\.\\:", "")))
+				return;
+			String csvDataName = csvFile.getName();
+			if (!csvDataName.toLowerCase().endsWith(".csv"))
+				csvDataName += ".csv";
+			if (this.dataProvider.isDataAvailable(csvDataName) && (JOptionPane.showConfirmDialog(this, ("The file '" + csvDataName + "' already exists - Replace it?"), "Replace File?", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE) != JOptionPane.OK_OPTION))
+				return;
+			
+			try {
+				InputStream csvIn = new BufferedInputStream(new FileInputStream(csvFile));
+				OutputStream csvOut = new BufferedOutputStream(this.dataProvider.getOutputStream(csvDataName));
+				byte[] csvBuffer = new byte[1024];
+				for (int r; (r = csvIn.read(csvBuffer, 0, csvBuffer.length)) != -1;)
+					csvOut.write(csvBuffer, 0, r);
+				csvOut.flush();
+				csvOut.close();
+				csvIn.close();
+				this.refreshCsvDataNames();
+				this.csvDataName.setSelectedItem(csvDataName);
+			}
+			catch (IOException ioe) {
+				JOptionPane.showMessageDialog(this, ("An error occurred while impoting file '" + csvFile.getAbsolutePath() + "':\n" + ioe.getMessage() + "\nSee log files for error details."), "Error Importing File", JOptionPane.ERROR_MESSAGE);
+				System.out.println("Error importin CSV file '" + csvFile.getAbsolutePath() + "': " + ioe.getMessage());
+				ioe.printStackTrace(System.out);
 			}
 		}
 		

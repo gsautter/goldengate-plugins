@@ -292,7 +292,7 @@ public class CharacterNormalization {
 			String str = originalValue.substring(c, (c+1));
 			String normalizedStr = this.mappings.getProperty(str);
 			
-			//	curret letter not normalized to anything but itself, simply append it
+			//	current letter not normalized to anything but itself, simply append it
 			if ((normalizedStr == null) || str.equals(normalizedStr)) {
 				normalizedValue.append(str);
 				continue;
