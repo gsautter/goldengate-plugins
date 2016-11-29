@@ -5,7 +5,7 @@
 -->
 
 <project name="dist">
-	<target name="plugins" depends="analyzersjar,characternormalizerjar,annotationpatternsjar,annotatorsjar,batchjar,sgmlreaderjar,sgmlwriterjar,filteredjar,gpathjar,gscriptjar,listsjar,markupconvertersjar,multilistsjar,parameterizedjar,pipelinesjar,reasonersjar,regexesjar,feedbackjar,docviewerjar,docviewertreejar,docviewernavjar,docviewerselectjar,docviewerslidejar,dociofilejar,dociowebjar,editorextensionnavjar,translatorjar,docformatarffjar,docformatencodingjar,docformatgamtajar,docformathtmljar,docformattextjar,docformatxsltjar,docformatpdfjar">
+	<target name="plugins" depends="analyzersjar,characternormalizerjar,annotationpatternsjar,annotatorsjar,attributesjar,batchjar,sgmlreaderjar,sgmlwriterjar,filteredjar,gpathjar,gscriptjar,listsjar,markupconvertersjar,multilistsjar,parameterizedjar,pipelinesjar,reasonersjar,regexesjar,feedbackjar,docviewerjar,docviewertreejar,docviewernavjar,docviewerselectjar,docviewerslidejar,dociofilejar,dociowebjar,editorextensionnavjar,translatorjar,docformatarffjar,docformatencodingjar,docformatgamtajar,docformathtmljar,docformattextjar,docformatxsltjar,docformatpdfjar">
 		<!-- proxy target only -->
 	</target>
 	
@@ -56,6 +56,19 @@
 			</fileset>
 			<fileset dir="${src.home}">
 				<include name="**/goldenGate/plugin/annotators/*.java" />
+			</fileset>
+			<fileset dir="." includes="LICENSE.txt"/>
+		</jar>
+	</target>
+	
+	<target name="attributesjar">
+		<delete file="${jar.attributes}" />
+		<jar destfile="${jar.attributes}" manifest="${file.home}/MANIFEST.plugins.MF">
+			<fileset dir="${build.home}/classes">
+				<include name="**/goldenGate/plugin/attributes/*.class" />
+			</fileset>
+			<fileset dir="${src.home}">
+				<include name="**/goldenGate/plugin/attributes/*.java" />
 			</fileset>
 			<fileset dir="." includes="LICENSE.txt"/>
 		</jar>

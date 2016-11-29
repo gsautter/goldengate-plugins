@@ -5,7 +5,7 @@
 -->
 
 <project name="import">
-	<target name="fetch" depends="fetch-ic,fetch-ie,fetch-gg" />
+	<target name="fetch" depends="fetch-ic,fetch-ie,fetch-gg,fetch-im" />
 	
 	<target name="check-fetch-ic" unless="ic.exists">
 		<available property="ic.exists" file="../idaho-core/lib/mail.jar"/>
