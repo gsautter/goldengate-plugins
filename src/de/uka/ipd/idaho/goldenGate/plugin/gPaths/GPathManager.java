@@ -459,6 +459,9 @@ public class GPathManager extends AbstractAnnotationFilterManager {
 			public String toXML() {
 				return this.data.toXML();
 			}
+			public QueriableAnnotation getDocument() {
+				return this.data.getDocument();
+			}
 			public String changeTypeTo(String newType) {
 				return this.data.getType();
 			}
