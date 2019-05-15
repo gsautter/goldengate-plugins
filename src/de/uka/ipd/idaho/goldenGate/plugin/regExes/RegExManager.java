@@ -192,7 +192,7 @@ public class RegExManager extends AbstractAnnotationSourceManager {
 	 */
 	private Annotation[] testRegEx(String regEx) {
 		QueriableAnnotation data = this.parent.getActiveDocument();
-		return ((data == null) ? null : Gamta.extractAllMatches(data, regEx, 20));
+		return ((data == null) ? null : Gamta.extractAllMatches(data, regEx, 64));
 	}
 	
 	/* (non-Javadoc)

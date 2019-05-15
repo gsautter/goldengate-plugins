@@ -54,11 +54,14 @@ import javax.swing.JTextField;
 
 import de.uka.ipd.idaho.easyIO.settings.Settings;
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
+import de.uka.ipd.idaho.gamta.util.ProgressMonitor;
+import de.uka.ipd.idaho.gamta.util.ProgressMonitor.CascadingProgressMonitor;
 import de.uka.ipd.idaho.goldenGate.plugins.AbstractDocumentProcessorManager;
 import de.uka.ipd.idaho.goldenGate.plugins.AnnotationFilter;
 import de.uka.ipd.idaho.goldenGate.plugins.AnnotationFilterManager;
 import de.uka.ipd.idaho.goldenGate.plugins.DocumentProcessor;
 import de.uka.ipd.idaho.goldenGate.plugins.DocumentProcessorManager;
+import de.uka.ipd.idaho.goldenGate.plugins.MonitorableDocumentProcessor;
 import de.uka.ipd.idaho.goldenGate.plugins.ResourceManager;
 import de.uka.ipd.idaho.goldenGate.util.DataListListener;
 import de.uka.ipd.idaho.goldenGate.util.DialogPanel;
@@ -91,7 +94,7 @@ public class FilteredDocumentProcessorManager extends AbstractDocumentProcessorM
 		return ((settings == null) ? null : this.getFilteredProcessor(name, settings));
 	}
 	
-	private class FilteredDocumentProcessor implements DocumentProcessor {
+	private class FilteredDocumentProcessor implements MonitorableDocumentProcessor {
 		
 		private static final String FILTER_NAME_ATTRIBUTE = "FILTER_NAME";
 		private static final String FILTER_PROVIDER_CLASS_NAME_ATTRIBUTE = "FILTER_PROVIDER_CLASS";
@@ -142,14 +145,28 @@ public class FilteredDocumentProcessorManager extends AbstractDocumentProcessorM
 		 * @see de.uka.ipd.idaho.goldenGate.plugins.DocumentProcessor#process(de.uka.ipd.idaho.gamta.MutableAnnotation, java.util.Properties)
 		 */
 		public void process(MutableAnnotation data, Properties parameters) {
+			this.process(data, parameters, ProgressMonitor.dummy);
+		}
+
+		/* (non-Javadoc)
+		 * @see de.uka.ipd.idaho.goldenGate.plugins.MonitorableDocumentProcessor#process(de.uka.ipd.idaho.gamta.MutableAnnotation, java.util.Properties, de.uka.ipd.idaho.gamta.util.ProgressMonitor)
+		 */
+		public void process(MutableAnnotation data, Properties parameters, ProgressMonitor pm) {
 			MutableAnnotation[] dataToProcess;
 			if (this.filter == null) {
 				dataToProcess = new MutableAnnotation[1];
 				dataToProcess[0] = data;
-			} else dataToProcess = this.filter.getMutableMatches(data);
+			}
+			else dataToProcess = this.filter.getMutableMatches(data);
 			
-			for (int d = 0; d < dataToProcess.length; d++)
-				this.processor.process(dataToProcess[d], parameters);
+			CascadingProgressMonitor cpm = new CascadingProgressMonitor(pm);
+			for (int d = 0; d < dataToProcess.length; d++) {
+				pm.setBaseProgress((100 * d) / dataToProcess.length);
+				pm.setMaxProgress((100 * (d+1)) / dataToProcess.length);
+				if (this.processor instanceof MonitorableDocumentProcessor)
+					((MonitorableDocumentProcessor) this.processor).process(dataToProcess[d], parameters, cpm);
+				else this.processor.process(dataToProcess[d], parameters);
+			}
 		}
 	}
 

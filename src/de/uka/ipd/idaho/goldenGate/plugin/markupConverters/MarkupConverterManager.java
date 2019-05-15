@@ -141,6 +141,21 @@ public class MarkupConverterManager extends AbstractDocumentProcessorManager {
 				if (parent.getAnnotationFilterProvider(resourceProviderClassName) != null)
 					refreshExternalFilters();
 			}
+			public void resourceUpdated(String resourceProviderClassName, String resourceName) {
+				AnnotationFilterManager afm = parent.getAnnotationFilterProvider(resourceProviderClassName);
+				if (afm == null)
+					return;
+				String name = (resourceName + "@" + resourceProviderClassName);
+				String label = ("<" + afm.getResourceTypeLabel() + ": " + resourceName + ">");
+				externalFilters.put(label, name);
+			}
+			public void resourceDeleted(String resourceProviderClassName, String resourceName) {
+				AnnotationFilterManager afm = parent.getAnnotationFilterProvider(resourceProviderClassName);
+				if (afm == null)
+					return;
+				String label = ("<" + afm.getResourceTypeLabel() + ": " + resourceName + ">");
+				externalFilters.remove(label);
+			}
 		});
 		this.refreshExternalFilters();
 	}

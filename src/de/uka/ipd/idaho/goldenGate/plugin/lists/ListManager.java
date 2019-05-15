@@ -917,7 +917,7 @@ public class ListManager extends AbstractAnnotationSourceManager {
 			unionButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			unionButton.setPreferredSize(new Dimension(70, 21));
 			unionButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					unionList();
 				}
 			});
@@ -926,7 +926,7 @@ public class ListManager extends AbstractAnnotationSourceManager {
 			intersectButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			intersectButton.setPreferredSize(new Dimension(70, 21));
 			intersectButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					intersectList();
 				}
 			});
@@ -935,7 +935,7 @@ public class ListManager extends AbstractAnnotationSourceManager {
 			subtractButton.setBorder(BorderFactory.createRaisedBevelBorder());
 			subtractButton.setPreferredSize(new Dimension(70, 21));
 			subtractButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
+				public void actionPerformed(ActionEvent ae) {
 					subtractList();
 				}
 			});
@@ -1028,21 +1028,21 @@ public class ListManager extends AbstractAnnotationSourceManager {
 		/*
 		 * @see javax.swing.event.DocumentListener#changedUpdate(javax.swing.event.DocumentEvent)
 		 */
-		public void changedUpdate(DocumentEvent e) {
+		public void changedUpdate(DocumentEvent de) {
 			//	attribute changes are not of interest for now
 		}
 		
 		/*
 		 * @see javax.swing.event.DocumentListener#insertUpdate(javax.swing.event.DocumentEvent)
 		 */
-		public void insertUpdate(DocumentEvent e) {
+		public void insertUpdate(DocumentEvent de) {
 			this.dirty = true;
 		}
 		
 		/*
 		 * @see javax.swing.event.DocumentListener#removeUpdate(javax.swing.event.DocumentEvent)
 		 */
-		public void removeUpdate(DocumentEvent e) {
+		public void removeUpdate(DocumentEvent de) {
 			this.dirty = true;
 		}
 		

@@ -64,6 +64,7 @@ import javax.swing.event.ListDataListener;
 import de.uka.ipd.idaho.easyIO.settings.Settings;
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
 import de.uka.ipd.idaho.gamta.util.ProgressMonitor;
+import de.uka.ipd.idaho.gamta.util.ProgressMonitor.CascadingProgressMonitor;
 import de.uka.ipd.idaho.gamta.util.swing.ProgressMonitorWindow;
 import de.uka.ipd.idaho.goldenGate.DocumentEditor;
 import de.uka.ipd.idaho.goldenGate.DocumentEditorDialog;
@@ -241,7 +242,7 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 		private ProgressMonitor splashScreen;
 		
 		PipelineDocumentProcessor(ResourceSplashScreen splashScreen, String name, Pipeline pipeline) {
-			this.splashScreen = splashScreen;
+			this.splashScreen = ((splashScreen == null) ? ProgressMonitor.dummy : splashScreen);
 			this.name = name;
 			this.pipeline = pipeline;
 		}
@@ -304,28 +305,32 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 				if (splashScreen != null) {
 					if (splashScreen instanceof ResourceSplashScreen)
 						((ResourceSplashScreen) splashScreen).setText("Current Processor is " + part.getName());
-					if (isTopInvocation) {
-						splashScreen.setBaseProgress((100 * p) / parts.length);
-						splashScreen.setMaxProgress((100 * (p+1)) / parts.length);
-						splashScreen.setProgress(0);
-					}
-					else splashScreen.setProgress((100 * p) / parts.length);
+					else if (splashScreen instanceof PipelineProgressMonitor)
+						((PipelineProgressMonitor) splashScreen).setText("Current Processor is " + part.getName());
+//					if (isTopInvocation) {
+//						splashScreen.setBaseProgress((100 * p) / parts.length);
+//						splashScreen.setMaxProgress((100 * (p+1)) / parts.length);
+//						splashScreen.setProgress(0);
+//					}
+//					else splashScreen.setProgress((100 * p) / parts.length);
+					splashScreen.setBaseProgress((100 * p) / parts.length);
+					splashScreen.setMaxProgress((100 * (p+1)) / parts.length);
+					splashScreen.setProgress(0);
 				}
 				
 				if (part instanceof PipelineDocumentProcessor) {
 					if (!activePipelines.contains(part.getName().toLowerCase())) //	catch cycles
-						((PipelineDocumentProcessor) part).process(data, allowFeedback, false, false, splashScreen, activePipelines, parameters, false);
+						((PipelineDocumentProcessor) part).process(data, allowFeedback, false, false, new PipelineProgressMonitor(splashScreen), activePipelines, parameters, false);
 				}
 				else {
 					Properties subParameters = new Properties();
-					Iterator it = parameters.keySet().iterator();
-					while (it.hasNext()) {
+					for (Iterator it = parameters.keySet().iterator(); it.hasNext();) {
 						String key = it.next().toString();
 						if ((allowFeedback && this.pipeline.allowFeedback()) || !INTERACTIVE_PARAMETER.equals(key))
 							subParameters.setProperty(key, parameters.getProperty(key));
 					}
 					if (part instanceof MonitorableDocumentProcessor)
-						((MonitorableDocumentProcessor) part).process(data, subParameters, splashScreen);
+						((MonitorableDocumentProcessor) part).process(data, subParameters, new CascadingProgressMonitor(splashScreen));
 					else part.process(data, subParameters);
 				}
 				
@@ -344,6 +349,20 @@ public class PipelineManager extends AbstractDocumentProcessorManager {
 			}
 			
 			activePipelines.remove(this.getName().toLowerCase());
+		}
+		
+		private class PipelineProgressMonitor extends CascadingProgressMonitor {
+			private ProgressMonitor pm;
+			PipelineProgressMonitor(ProgressMonitor pm) {
+				super(pm);
+				this.pm = pm;
+			}
+			void setText(String text) {
+				if (this.pm instanceof ResourceSplashScreen)
+					((ResourceSplashScreen) this.pm).setText(text);
+				else if (this.pm instanceof PipelineProgressMonitor)
+					((PipelineProgressMonitor) this.pm).setText(text);
+			}
 		}
 		
 		private class DocumentEditDialog extends DocumentEditorDialog {

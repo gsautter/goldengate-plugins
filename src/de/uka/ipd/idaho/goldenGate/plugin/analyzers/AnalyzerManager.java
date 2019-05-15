@@ -199,12 +199,16 @@ public class AnalyzerManager extends AbstractDocumentProcessorManager {
 			this.process(data, parameters);
 		}
 		public void process(MutableAnnotation data, Properties parameters) {
+			this.analyzer.process(data, this.prepareAnalyzerParamameters(parameters));
+		}
+		Properties prepareAnalyzerParamameters(Properties parameters) {
 			Properties prop = ((parameters == null) ? new Properties() : new Properties(parameters));
 			if (dataProvider.allowWebAccess())
 				prop.setProperty(Analyzer.ONLINE_PARAMETER, Analyzer.ONLINE_PARAMETER);
 			if ((parameters != null) && parameters.containsKey(INTERACTIVE_PARAMETER))
 				prop.setProperty(Analyzer.INTERACTIVE_PARAMETER, Analyzer.INTERACTIVE_PARAMETER);
-			this.analyzer.process(data, prop);
+			prop.setProperty(Analyzer.CALL_PATH_PARAMETER, (this.getName() + "@" + this.getProviderClassName()));
+			return prop;
 		}
 	}
 	
@@ -221,12 +225,7 @@ public class AnalyzerManager extends AbstractDocumentProcessorManager {
 			this.process(data, parameters, ProgressMonitor.dummy);
 		}
 		public void process(MutableAnnotation data, Properties parameters, ProgressMonitor pm) {
-			Properties prop = ((parameters == null) ? new Properties() : new Properties(parameters));
-			if (dataProvider.allowWebAccess())
-				prop.setProperty(Analyzer.ONLINE_PARAMETER, Analyzer.ONLINE_PARAMETER);
-			if ((parameters != null) && parameters.containsKey(INTERACTIVE_PARAMETER))
-				prop.setProperty(Analyzer.INTERACTIVE_PARAMETER, Analyzer.INTERACTIVE_PARAMETER);
-			((MonitorableAnalyzer) this.analyzer).process(data, prop, pm);
+			((MonitorableAnalyzer) this.analyzer).process(data, this.prepareAnalyzerParamameters(parameters), pm);
 		}
 	}
 	
