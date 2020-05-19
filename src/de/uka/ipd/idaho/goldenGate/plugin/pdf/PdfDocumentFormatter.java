@@ -10,11 +10,11 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Universität Karlsruhe (TH) nor the
+ *     * Neither the name of the Universitaet Karlsruhe (TH) nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY UNIVERSITÄT KARLSRUHE (TH) / KIT AND CONTRIBUTORS 
+ * THIS SOFTWARE IS PROVIDED BY UNIVERSITAET KARLSRUHE (TH) / KIT AND CONTRIBUTORS 
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE FOR ANY
@@ -41,14 +41,12 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 import org.icepdf.core.exceptions.PDFException;
 import org.icepdf.core.exceptions.PDFSecurityException;
 import org.icepdf.core.pobjects.Document;
 
-import de.uka.ipd.idaho.easyIO.util.RandomByteSource;
+import de.uka.ipd.idaho.easyIO.util.HashUtils;
 import de.uka.ipd.idaho.gamta.AnnotationUtils;
 import de.uka.ipd.idaho.gamta.DocumentRoot;
 import de.uka.ipd.idaho.gamta.Gamta;
@@ -519,34 +517,36 @@ public class PdfDocumentFormatter extends AbstractDocumentFormatProvider impleme
 //		return pns;
 //	}
 //	
-	private static MessageDigest checksumDigester = null;
+//	private static MessageDigest checksumDigester = null;
 	private static String getChecksum(byte[] pdfBytes) {
-		if (checksumDigester == null) {
-			try {
-				checksumDigester = MessageDigest.getInstance("MD5");
-			}
-			catch (NoSuchAlgorithmException nsae) {
-				System.out.println(nsae.getClass().getName() + " (" + nsae.getMessage() + ") while creating checksum digester.");
-				nsae.printStackTrace(System.out); // should not happen, but Java don't know ...
-				return Gamta.getAnnotationID(); // use random value so a document is regarded as new
-			}
-		}
-		checksumDigester.reset();
-		InputStream is = new ByteArrayInputStream(pdfBytes);
-		try {
-			byte[] buffer = new byte[1024];
-			int read;
-			while ((read = is.read(buffer)) != -1)
-				checksumDigester.update(buffer, 0, read);
-		}
-		catch (IOException ioe) {
-			System.out.println(ioe.getClass().getName() + " (" + ioe.getMessage() + ") while computing document checksum.");
-			ioe.printStackTrace(System.out); // should not happen, but Java don't know ...
-			return Gamta.getAnnotationID(); // use random value so a document is regarded as new
-		}
-		byte[] checksumBytes = checksumDigester.digest();
-		String checksum = new String(RandomByteSource.getHexCode(checksumBytes));
-		return checksum;
+		String checksum = HashUtils.getMd5(pdfBytes);
+		return ((checksum == null) ? Gamta.getAnnotationID() : checksum); // use random value to avoid collisions
+//		if (checksumDigester == null) {
+//			try {
+//				checksumDigester = MessageDigest.getInstance("MD5");
+//			}
+//			catch (NoSuchAlgorithmException nsae) {
+//				System.out.println(nsae.getClass().getName() + " (" + nsae.getMessage() + ") while creating checksum digester.");
+//				nsae.printStackTrace(System.out); // should not happen, but Java don't know ...
+//				return Gamta.getAnnotationID(); // use random value so a document is regarded as new
+//			}
+//		}
+//		checksumDigester.reset();
+//		InputStream is = new ByteArrayInputStream(pdfBytes);
+//		try {
+//			byte[] buffer = new byte[1024];
+//			int read;
+//			while ((read = is.read(buffer)) != -1)
+//				checksumDigester.update(buffer, 0, read);
+//		}
+//		catch (IOException ioe) {
+//			System.out.println(ioe.getClass().getName() + " (" + ioe.getMessage() + ") while computing document checksum.");
+//			ioe.printStackTrace(System.out); // should not happen, but Java don't know ...
+//			return Gamta.getAnnotationID(); // use random value so a document is regarded as new
+//		}
+//		byte[] checksumBytes = checksumDigester.digest();
+//		String checksum = new String(RandomByteSource.getHexCode(checksumBytes));
+//		return checksum;
 	}
 //	
 //	/**
