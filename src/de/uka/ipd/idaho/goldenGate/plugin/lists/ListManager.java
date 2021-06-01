@@ -599,7 +599,7 @@ public class ListManager extends AbstractAnnotationSourceManager {
 			if (!listName.endsWith(FILE_EXTENSION)) listName += FILE_EXTENSION;
 			try {
 				if (this.storeListResource(listName, newList)) {
-					this.parent.notifyResourcesChanged(this.getClass().getName());
+					this.parent.notifyResourceUpdated(this.getClass().getName(), listName);
 					this.resourceNameList.refresh();
 					return listName;
 				}

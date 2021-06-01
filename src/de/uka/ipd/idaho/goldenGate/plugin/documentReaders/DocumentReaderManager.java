@@ -234,7 +234,7 @@ public class DocumentReaderManager extends AbstractDocumentFormatProvider {
 								os.close();
 								changed = true;
 							}
-							if (changed) parent.notifyResourcesChanged(DocumentReaderManager.class.getName());
+							if (changed) parent.notifyResourceUpdated(DocumentReaderManager.class.getName(), editor.documentReaderName);
 						}
 						catch (IOException ioe) {
 							if (JOptionPane.showConfirmDialog(DocumentReaderSettingsPanel.this, (ioe.getClass().getName() + " (" + ioe.getMessage() + ")\nwhile saving file to " + editor.documentReaderName + "\nProceed?"), "Could Not Save DocumentReader", JOptionPane.YES_NO_OPTION) == JOptionPane.NO_OPTION) {
@@ -273,7 +273,7 @@ public class DocumentReaderManager extends AbstractDocumentFormatProvider {
 							os.flush();
 							os.close();
 							
-							parent.notifyResourcesChanged(DocumentReaderManager.class.getName());
+							parent.notifyResourceUpdated(DocumentReaderManager.class.getName(), editor.documentReaderName);
 						} catch (IOException ioe) {}
 					}
 				}
@@ -333,7 +333,7 @@ public class DocumentReaderManager extends AbstractDocumentFormatProvider {
 							fileExtensionsToDocumentReaders.storeAsText(os);
 							os.flush();
 							os.close();
-							parent.notifyResourcesChanged(DocumentReaderManager.class.getName());
+							parent.notifyResourceUpdated(DocumentReaderManager.class.getName(), documentReaderName);
 							return true;
 						}
 						catch (IOException e) {}
@@ -359,7 +359,7 @@ public class DocumentReaderManager extends AbstractDocumentFormatProvider {
 						os.flush();
 						os.close();
 						
-						parent.notifyResourcesChanged(DocumentReaderManager.class.getName());
+						parent.notifyResourceDeleted(DocumentReaderManager.class.getName(), name);
 						return true;
 					}
 					else {

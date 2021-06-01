@@ -251,7 +251,7 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 					if ((editor != null) && editor.isDirty()) {
 						try {
 							storeDocumentWriter(editor.documentWriterName, editor.getContent());
-							parent.notifyResourcesChanged(DocumentWriterManager.class.getName());
+							parent.notifyResourceUpdated(DocumentWriterManager.class.getName(), editor.documentWriterName);
 						}
 						catch (IOException ioe) {
 							if (JOptionPane.showConfirmDialog(DocumentWriterSettingsPanel.this, (ioe.getClass().getName() + " (" + ioe.getMessage() + ")\nwhile saving file to " + editor.documentWriterName + "\nProceed?"), "Could Not Save DocumentWriter", JOptionPane.YES_NO_OPTION) == JOptionPane.NO_OPTION) {
@@ -277,7 +277,7 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 					if ((editor != null) && editor.isDirty()) {
 						try {
 							storeDocumentWriter(editor.documentWriterName, editor.getContent());
-							parent.notifyResourcesChanged(DocumentWriterManager.class.getName());
+							parent.notifyResourceUpdated(DocumentWriterManager.class.getName(), editor.documentWriterName);
 						}
 						catch (IOException ioe) {}
 					}
@@ -399,7 +399,7 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 				if (!documentWriterName.endsWith(FILE_EXTENSION)) documentWriterName += FILE_EXTENSION;
 				try {
 					if (storeDocumentWriter(documentWriterName, newDocumentWriter)) {
-						parent.notifyResourcesChanged(DocumentWriterManager.class.getName());
+						parent.notifyResourceUpdated(DocumentWriterManager.class.getName(), documentWriterName);
 						return true;
 					}
 				} catch (IOException e) {}
@@ -413,7 +413,7 @@ public class DocumentWriterManager extends AbstractDocumentFormatProvider {
 				try {
 					if (dataProvider.deleteData(name)) {
 						resourceNameList.refresh();
-						parent.notifyResourcesChanged(DocumentWriterManager.class.getName());
+						parent.notifyResourceDeleted(DocumentWriterManager.class.getName(), name);
 						return true;
 					}
 					else {

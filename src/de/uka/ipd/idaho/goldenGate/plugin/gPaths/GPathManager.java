@@ -289,7 +289,7 @@ public class GPathManager extends AbstractAnnotationFilterManager {
 		
 		if (egpd.isCommitted()) try {
 			this.storeStringResource(name, egpd.getGPath());
-			this.parent.notifyResourcesChanged(this.getClass().getName());
+			this.parent.notifyResourceUpdated(this.getClass().getName(), name);
 		} catch (IOException ioe) {}
 	}
 
@@ -442,6 +442,9 @@ public class GPathManager extends AbstractAnnotationFilterManager {
 			}
 			public String getValue() {
 				return this.data.getValue();
+			}
+			public QueriableAnnotation getAnnotation(String id) {
+				return null;
 			}
 			public QueriableAnnotation[] getAnnotations() {
 				return new QueriableAnnotation[0];
@@ -732,7 +735,7 @@ public class GPathManager extends AbstractAnnotationFilterManager {
 			if (!gPathName.endsWith(FILE_EXTENSION)) gPathName += FILE_EXTENSION;
 			try {
 				if (this.storeStringResource(gPathName, gPath)) {
-					this.parent.notifyResourcesChanged(this.getClass().getName());
+					this.parent.notifyResourceUpdated(this.getClass().getName(), gPathName);
 					this.resourceNameList.refresh();
 					return gPathName;
 				}
