@@ -796,7 +796,7 @@ public class AnalyzerManager extends AbstractDocumentProcessorManager {
 				StringBuffer anp = new StringBuffer();
 				for (int c = 0; c < analyzerNamePrefix.length(); c++) {
 					char ch = analyzerNamePrefix.charAt(c);
-					if ((c == 0) || (StringUtils.UPPER_CASE_LETTERS.indexOf(ch) != -1))
+					if ((c == 0) || (StringUtils.LATIN_UPPER_CASE_LETTERS.indexOf(ch) != -1))
 						anp.append(Character.toUpperCase(ch));
 				}
 				analyzerNamePrefix = anp.toString();

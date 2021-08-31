@@ -388,7 +388,6 @@ public class GPathManager extends AbstractAnnotationFilterManager {
 		
 		/** wrapper for making an arbitrary Annotation mimic a QueriableAnnotation */
 		private class FilterableAnnotation implements QueriableAnnotation {
-			
 			private Annotation data;
 			
 			private FilterableAnnotation(Annotation data) {
@@ -450,6 +449,18 @@ public class GPathManager extends AbstractAnnotationFilterManager {
 				return new QueriableAnnotation[0];
 			}
 			public QueriableAnnotation[] getAnnotations(String type) {
+				return new QueriableAnnotation[0];
+			}
+			public QueriableAnnotation[] getAnnotationsSpanning(int startIndex, int endIndex) {
+				return new QueriableAnnotation[0];
+			}
+			public QueriableAnnotation[] getAnnotationsSpanning(String type, int startIndex, int endIndex) {
+				return new QueriableAnnotation[0];
+			}
+			public QueriableAnnotation[] getAnnotationsOverlapping(int startIndex, int endIndex) {
+				return new QueriableAnnotation[0];
+			}
+			public QueriableAnnotation[] getAnnotationsOverlapping(String type, int startIndex, int endIndex) {
 				return new QueriableAnnotation[0];
 			}
 			public String[] getAnnotationTypes() {

@@ -1845,13 +1845,18 @@ class AnnotateFunction implements GScriptFunction {
 			GPathAnnotationSet gpas = ((GPathAnnotationSet) parameters[1]);
 			for (int a = 0; a < gpas.size(); a++) {
 				Annotation an = gpas.get(a);
-				if (an instanceof MutableAnnotation)
+				if (an instanceof MutableAnnotation) {
 					dp.process((MutableAnnotation) an);
-				else {
-					MutableAnnotation temp = data.addAnnotation(an);
-					dp.process((MutableAnnotation) temp);
+					continue;
+				}
+				//	need to prevent cleanup of pre-existing annotations (IM has implicit duplicate prevention, and so will XM !!!)
+				MutableAnnotation man = data.getMutableAnnotation(an.getAnnotationID());
+				if (man == null) {
+					MutableAnnotation temp = data.addAnnotation(Gamta.getAnnotationID(), an.getStartIndex(), an.size());
+					dp.process(temp);
 					data.removeAnnotation(temp);
 				}
+				else dp.process(man);
 			}
 			return (gpas.size() + " MutableAnnotations processed.");
 		}
@@ -1934,13 +1939,18 @@ class RunFunction implements GScriptFunction {
 			GPathAnnotationSet gpas = ((GPathAnnotationSet) parameters[1]);
 			for (int a = 0; a < gpas.size(); a++) {
 				Annotation an = gpas.get(a);
-				if (an instanceof MutableAnnotation)
+				if (an instanceof MutableAnnotation) {
 					dp.process((MutableAnnotation) an);
-				else {
-					MutableAnnotation temp = data.addAnnotation(an);
-					dp.process((MutableAnnotation) temp);
+					continue;
+				}
+				//	need to prevent cleanup of pre-existing annotations (IM has implicit duplicate prevention, and so will XM !!!)
+				MutableAnnotation man = data.getMutableAnnotation(an.getAnnotationID());
+				if (man == null) {
+					MutableAnnotation temp = data.addAnnotation(Gamta.getAnnotationID(), an.getStartIndex(), an.size());
+					dp.process(temp);
 					data.removeAnnotation(temp);
 				}
+				else dp.process(man);
 			}
 			return (gpas.size() + " MutableAnnotations processed.");
 		}
